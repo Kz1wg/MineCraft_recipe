@@ -1,0 +1,43 @@
+name: Build recipe database
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 3 * * 1"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this app
+        uses: actions/checkout@v4
+      - name: Checkout Mojang Bedrock samples
+        uses: actions/checkout@v4
+        with:
+          repository: Mojang/bedrock-samples
+          ref: main
+          path: source
+      - name: Build Japanese recipe database
+        run: python scripts/build_data.py
+      - name: Remove downloaded source checkout
+        run: rm -rf source
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
