@@ -15,20 +15,6 @@ iPhoneのSafariで使うことを想定した、Minecraft Bedrock Edition向け�
 
 **注意：** これは「クラフト・加工レシピの図鑑」です。ゲーム内の全アイテム一覧ではありません。クラフトできず、ドロップ・取引・探索などでのみ入手するアイテムはレシピとしては載りません。アドオン独自レシピも含みません。公式サンプルのデータ構造や翻訳キーの変更により、変換スクリプトの調整が必要になる場合があります。
 
-## GitHub Pagesで公開する
-
-1. GitHubで新しい **Public repository** を作成（例：`minecraft-recipe`）。
-2. このZIPの中身を、フォルダごとではなくリポジトリ直下にアップロードする。
-   - `index.html`
-   - `manifest.webmanifest`\n- `sw.js`
-   - `scripts/build_data.py`
-   - `.github/workflows/build.yml`
-   - `data/` フォルダ
-3. リポジトリの **Settings → Pages → Build and deployment** で、Sourceを **GitHub Actions** にする。
-4. **Actions** タブを開き、`Build recipe database` が完了するまで待つ。
-5. 公開URLは `https://あなたのGitHubユーザー名.github.io/minecraft-recipe/` の形式。
-
-初回はActionsがレシピデータを生成してから公開します。`data/recipes.json` が生成される前は「レシピデータ未生成」と表示されます。
 
 ## iPhoneのホーム画面に追加
 
