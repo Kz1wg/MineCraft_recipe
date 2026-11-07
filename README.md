@@ -17,7 +17,7 @@ iPhoneのSafariで使うことを想定した、Minecraft Bedrock Edition向け�
 
 
 ## iPhoneのホーム画面に追加
-
+URL: https://kz1wg.github.io/MineCraft_recipe/
 1. iPhoneのSafariで公開URLを開く。初回表示後は、読み込んだレシピデータをキャッシュしてオフラインでも参照できるようにします。
 2. 共有ボタンをタップ。
 3. **ホーム画面に追加** を選択。
