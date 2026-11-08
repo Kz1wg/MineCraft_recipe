@@ -2,6 +2,7 @@
   "name": "マイクラ レシピ図鑑",
   "short_name": "レシピ図鑑",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#101812",
   "theme_color": "#243b2b",

@@ -3,109 +3,413 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#243b2b">\n<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#243b2b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="レシピ図鑑">
 <meta name="description" content="Minecraft Bedrock Editionのレシピを検索できるiPhone向け図鑑">
 <title>マイクラ レシピ図鑑</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
-:root{color-scheme:dark;--bg:#101812;--panel:#1b2a20;--panel2:#26392b;--line:#3d5942;--text:#f3f7f0;--muted:#b6c5b5;--accent:#a4d58d;--warn:#f1d28b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
-header{padding:calc(15px + env(safe-area-inset-top)) 15px 13px;background:#243b2b;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-h1{font-size:20px;margin:0 0 4px}.sub{font-size:11px;color:#d2dfcf}
-main{max-width:820px;margin:auto;padding:13px 13px calc(30px + env(safe-area-inset-bottom))}
-input,select{font:inherit;color:var(--text);background:#0e1711;border:1px solid var(--line);border-radius:12px;padding:13px;width:100%;font-size:16px}
-.searchrow{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0 10px}
-.filters{display:flex;gap:7px;overflow-x:auto;padding:2px 0 11px;scrollbar-width:none}.filters button{white-space:nowrap;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:999px;padding:8px 12px;font-size:12px}.filters button.active{background:var(--accent);border-color:var(--accent);color:#142116;font-weight:700}
-.meta{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11px;color:var(--muted);margin:4px 1px 9px}
+:root{color-scheme:dark;--bg:#101812;--head:#243b2b;--panel:#1b2a20;--panel2:#26392b;--line:#3d5942;--text:#f3f7f0;--muted:#b6c5b5;--accent:#a4d58d;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:150px}
+html.lock,html.lock body{overflow:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;-webkit-text-size-adjust:100%}
+/* ステータスバー裏を塗りつぶす（スタンドアロン起動時の透過対策） */
+body::before{content:"";position:fixed;left:0;right:0;top:0;height:var(--sat);background:var(--head);z-index:40}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+
+.top{padding:calc(10px + var(--sat)) 14px 8px;background:var(--head);display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+h1{font-size:17px;margin:0;white-space:nowrap}
+.sub{font-size:10.5px;color:#c4d4c1;text-align:right;line-height:1.35}
+
+/* 画面上部に固定される検索バー */
+.toolbar{position:sticky;top:var(--sat);z-index:30;background:var(--head);border-bottom:1px solid var(--line);padding:2px 12px 0;box-shadow:0 5px 12px rgba(0,0,0,.35)}
+.searchrow{display:flex;gap:8px;align-items:stretch}
+.searchbox{position:relative;flex:1;min-width:0}
+.searchbox input{width:100%;background:#0e1711;border:1px solid var(--line);border-radius:12px;padding:11px 40px 11px 38px;font-size:16px;-webkit-appearance:none;appearance:none}
+.searchbox input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.searchbox input::-webkit-search-cancel-button,.searchbox input::-webkit-search-decoration{-webkit-appearance:none;display:none}
+.sicon{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:15px;opacity:.85}
+.clearbtn{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:0;background:transparent;color:var(--muted);font-size:16px;border-radius:50%}
+.clearbtn[hidden]{display:none}
+#station{width:auto;flex:0 0 auto;max-width:40%;background:#0e1711;border:1px solid var(--line);border-radius:12px;padding:0 8px;font-size:16px}
+.chips{display:flex;gap:7px;overflow-x:auto;margin:0 -12px;padding:9px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:0 0 auto;white-space:nowrap;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 13px;font-size:13px}
+.chips button.active{background:var(--accent);border-color:var(--accent);color:#142116;font-weight:700}
+
+main{max-width:820px;margin:auto;padding:10px 13px calc(30px + var(--sab))}
+.meta{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:2px 1px 9px;min-height:22px}
+.link{border:0;background:none;color:var(--accent);font-size:12px;padding:4px 2px;text-decoration:underline}
 .cards{display:grid;grid-template-columns:1fr;gap:8px}
-.recipe{display:flex;align-items:center;gap:11px;text-align:left;width:100%;padding:12px;border:1px solid var(--line);border-radius:13px;background:var(--panel);color:var(--text)}
+.grouphead{grid-column:1/-1;font-size:12px;font-weight:700;color:var(--accent);margin:10px 2px 0}
+.grouphead:first-child{margin-top:0}
+.recipe{display:flex;align-items:center;gap:11px;text-align:left;width:100%;min-height:62px;padding:10px 12px;border:1px solid var(--line);border-radius:13px;background:var(--panel)}
+.recipe:active{background:var(--panel2)}
 .icon{width:44px;height:44px;flex:0 0 44px;border-radius:11px;background:var(--panel2);display:grid;place-items:center;font-size:23px}
-.rname{font-weight:700;font-size:14px;line-height:1.35}.details{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.45}.arrow{margin-left:auto;color:var(--muted);font-size:20px}
-.detail{display:none;margin-top:13px;padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--panel)}.detail.show{display:block}
-.detailhead{display:flex;align-items:center;gap:10px}.detailhead .icon{width:52px;height:52px;font-size:28px}
-h2{font-size:17px;margin:0}.muted{color:var(--muted);font-size:12px;line-height:1.55}
-.detailgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,145px);gap:12px;align-items:start;margin-top:14px}
-.ingredients{padding:0;margin:7px 0 0;list-style:none}.ingredients li{padding:7px 0;border-bottom:1px solid #344a38;font-size:13px;line-height:1.4}
-.craftgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;aspect-ratio:1;background:#69765f;padding:5px;border-radius:10px}
-.cell{background:#d8d0b7;color:#24251f;border-radius:5px;display:grid;place-items:center;text-align:center;font-size:clamp(9px,2.8vw,12px);font-weight:700;min-width:0;overflow-wrap:anywhere;padding:2px}
-.cell.empty{background:#b5b09f;color:#777}.gridlabel{text-align:center;font-size:10px;color:var(--muted);margin-top:6px}
-.close{margin-top:13px;width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);font-size:14px}
-.empty{padding:24px;text-align:center;color:var(--muted);background:var(--panel);border-radius:13px}
-.notice{font-size:10px;color:var(--muted);line-height:1.65;margin:17px 2px}
-.pill{display:inline-block;padding:3px 7px;border-radius:6px;background:#314734;color:#d8ebd0;font-size:10px;margin:0 4px 4px 0}
+.rbody{min-width:0;flex:1}
+.rname{display:block;font-weight:700;font-size:15px;line-height:1.35}
+.cnt{font-weight:400;font-size:12px;color:var(--accent);margin-left:5px}
+.details{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.arrow{color:var(--muted);font-size:20px}
+.morebtn{grid-column:1/-1;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:14px}
+.empty{grid-column:1/-1;padding:26px 18px;text-align:center;color:var(--muted);background:var(--panel);border-radius:13px;line-height:1.7}
+.empty .link{font-size:14px}
+.notice{font-size:10px;color:var(--muted);line-height:1.65;margin:20px 2px 10px}
 footer{font-size:10px;color:#91a18f;text-align:center;padding:8px}
-@media(min-width:620px){.cards{grid-template-columns:1fr 1fr}.searchrow{grid-template-columns:1fr 190px}.detailgrid{grid-template-columns:1fr 165px}}
+
+/* 詳細ボトムシート */
+.sheetroot{position:fixed;inset:0;z-index:100;display:none}
+.sheetroot.open{display:block}
+.backdrop{position:absolute;inset:0;background:rgba(0,0,0,.62);animation:fade .18s ease}
+.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;width:100%;max-width:640px;max-height:88vh;max-height:88dvh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.5);animation:up .22s ease}
+.sheetbar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:6px 8px 2px;touch-action:none}
+.grab{flex:1;display:grid;place-items:center;height:36px}
+.grab span{width:42px;height:5px;border-radius:3px;background:#587a5e}
+.sbtn{min-width:44px;height:40px;border:0;border-radius:12px;background:transparent;color:var(--text);font-size:15px;padding:0 10px}
+.sbtn:active{background:var(--panel2)}
+.sbtn[hidden]{visibility:hidden;display:block}
+.sheetbody{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 16px calc(18px + var(--sab))}
+.detailhead{display:flex;align-items:center;gap:12px}
+.detailhead .icon{width:54px;height:54px;flex-basis:54px;font-size:29px}
+h2{font-size:19px;margin:0;line-height:1.3}
+.muted{color:var(--muted);font-size:12px;line-height:1.55}
+.pills{margin-top:10px}
+.pill{display:inline-block;padding:3px 8px;border-radius:6px;background:#314734;color:#d8ebd0;font-size:11px;margin:0 4px 4px 0}
+.detailgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,150px);gap:14px;align-items:start;margin-top:14px}
+.sec{font-size:13px;font-weight:700;margin:0 0 4px}
+.ingredients{padding:0;margin:0;list-style:none}
+.ing{display:flex;align-items:center;gap:7px;width:100%;padding:10px 0;border:0;border-bottom:1px solid #344a38;background:transparent;font-size:14px;line-height:1.4;text-align:left;border-radius:0}
+.ing.static{cursor:default}
+button.ing:active{background:var(--panel2)}
+.iname{min-width:0;overflow-wrap:anywhere}
+.iqty{color:var(--muted);white-space:nowrap}
+.role{font-size:10px;padding:1px 6px;border-radius:5px;background:#34503a;color:#cfe6c7;white-space:nowrap}
+.go{margin-left:auto;color:var(--accent);font-size:12px;white-space:nowrap}
+.craftgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;aspect-ratio:1;background:#69765f;padding:5px;border-radius:10px}
+.cell{background:#d8d0b7;color:#24251f;border-radius:5px;display:grid;place-items:center;text-align:center;font-size:clamp(9px,2.6vw,12px);font-weight:700;min-width:0;overflow-wrap:anywhere;padding:2px;line-height:1.2}
+.cell.blank{background:#b5b09f}
+.gridlabel{text-align:center;font-size:10px;color:var(--muted);margin-top:6px}
+.flowbox{padding:14px 12px;background:var(--panel2);border-radius:10px;text-align:center;font-size:12px;line-height:1.6;color:var(--muted)}
+.alts{display:grid;gap:6px;margin-top:6px}
+.alt{display:block;width:100%;text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:13px;line-height:1.45}
+.alt small{display:block;color:var(--muted);font-size:11px}
+.act{display:block;width:100%;margin-top:16px;padding:13px;border:1px solid var(--accent);border-radius:12px;background:transparent;color:var(--accent);font-size:14px;font-weight:700}
+.act:active{background:rgba(164,213,141,.14)}
+.act.sub2{border-color:var(--line);color:var(--text);font-weight:400;margin-top:8px;background:var(--panel2)}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media(min-width:620px){.cards{grid-template-columns:1fr 1fr}.sheet{bottom:4vh;border-bottom:1px solid var(--line);border-radius:20px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header><h1>⛏ マイクラ レシピ図鑑</h1><div class="sub">iPhone向け ・ Minecraft 統合版 / Bedrock Edition</div></header>
-<main>
+<header class="top">
+  <h1>⛏ マイクラ レシピ図鑑</h1>
+  <div class="sub" id="version">統合版 / Bedrock</div>
+</header>
+
+<div class="toolbar" id="toolbar">
   <div class="searchrow">
-    <input id="search" type="search" placeholder="アイテム名・材料名で検索…" autocomplete="off">
-    <select id="station"><option value="">すべての作業場所</option></select>
+    <div class="searchbox">
+      <span class="sicon" aria-hidden="true">🔍</span>
+      <input id="search" type="search" placeholder="名前・材料で検索" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" inputmode="search" aria-label="アイテム名・材料名で検索">
+      <button class="clearbtn" id="clear" type="button" aria-label="検索語を消す" hidden>✕</button>
+    </div>
+    <select id="station" aria-label="作業場所で絞り込み"><option value="">全作業場所</option></select>
   </div>
-  <nav class="filters" id="filters"></nav>
-  <div class="meta"><span id="count">レシピを読み込み中…</span><span id="version"></span></div>
+  <nav class="chips" id="filters" aria-label="カテゴリ"></nav>
+</div>
+
+<main>
+  <div class="meta" id="meta"><span id="count" aria-live="polite">レシピを読み込み中…</span><span id="resetwrap"></span></div>
   <section class="cards" id="cards"></section>
-  <section class="detail" id="detail" aria-live="polite"></section>
   <p class="notice">
-    ※ この図鑑はMojang公式のBedrockサンプルデータをもとに生成します。バニラのレシピデータを収録していますが、入手のみ可能なアイテム、取引・ドロップ・構造物からのみ入手するアイテムは、クラフトレシピがないため表示されません。アドオン独自レシピも対象外です。<br>
-    レシピはゲームの更新で変更される場合があります。データ更新日とバージョンは上部に表示します。
+    ※ この図鑑はMojang公式のBedrockサンプルデータをもとに生成しています。クラフト・加工レシピの図鑑であり、ゲーム内の全アイテム一覧ではありません。ドロップ・取引・構造物からのみ入手するアイテムや、アドオン独自のレシピは表示されません。<br>
+    レシピはゲームの更新で変更される場合があります。データ更新日とバージョンは右上に表示します。
   </p>
   <footer>非公式ファンツール。Minecraft は Mojang Studios / Microsoft の商標です。</footer>
 </main>
+
+<div class="sheetroot" id="sheetRoot">
+  <div class="backdrop" id="backdrop"></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheetbar" id="sheetbar">
+      <button class="sbtn" id="sheetBack" type="button" aria-label="前のレシピに戻る" hidden>‹ 戻る</button>
+      <div class="grab" aria-hidden="true"><span></span></div>
+      <button class="sbtn" id="sheetClose" type="button" aria-label="閉じる">✕</button>
+    </div>
+    <div class="sheetbody" id="sheetBody"></div>
+  </section>
+</div>
+
 <script>
+(()=>{
+"use strict";
 const $=s=>document.querySelector(s);
-let all=[], active="すべて", current=null;
-const categories=["すべて","建築","道具・装備","食料","素材","醸造","その他"];
-const stationNames={"crafting_table":"作業台","stonecutter":"石切台","furnace":"かまど","blast_furnace":"溶鉱炉","smoker":"燻製器","campfire":"焚き火","soul_campfire":"魂の焚き火","smithing_table":"鍛冶台","brewing_stand":"醸造台","cartography_table":"製図台"};
+const PAGE=100;
+const collator=new Intl.Collator("ja");
+const CAT_ORDER=["建築","道具・装備","食料","レッドストーン・乗り物","素材","醸造","その他"];
+const stationNames={crafting_table:"作業台",stonecutter:"石切台",furnace:"かまど",blast_furnace:"溶鉱炉",smoker:"燻製器",campfire:"焚き火",soul_campfire:"魂の焚き火",smithing_table:"鍛冶台",brewing_stand:"醸造台",cartography_table:"製図台"};
 const stationOrder=Object.keys(stationNames);
-function stationLabel(s){return stationNames[s]||s||"その他";}
-function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+const stationLabel=s=>stationNames[s]||s||"その他";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// 検索用の正規化：全角半角・大文字小文字・ひらがな/カタカナの違いを吸収
+function norm(s){
+  return String(s??"").normalize("NFKC").toLowerCase()
+    .replace(/[\u3041-\u3096]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60))
+    .replace(/[・･]/g,"");
+}
+const idWords=s=>String(s||"").replace(/^#?(minecraft:)?/,"").replace(/[_:]/g," ");
+
+let all=[], byId=new Map(), byName=new Map(), byOutId=new Map();
+let q="", cat="すべて", st="", limit=PAGE;
+let timer=null;
+
+/* ---------------------------------------------------------------- 検索・一覧 */
+function prepare(){
+  all.sort((a,b)=>collator.compare(a.name,b.name)||String(a.id).localeCompare(String(b.id)));
+  byId.clear();byName.clear();byOutId.clear();
+  for(const r of all){
+    r.stations=r.stations||[];r.ingredients=r.ingredients||[];
+    r._n=norm(r.output||r.name);
+    r._o=norm((r.output||r.name)+" "+(r.outputId?idWords(r.outputId):""));
+    r._h=norm([r._o,...r.ingredients.map(x=>x.name+" "+idWords(x.id)),...r.stations.map(stationLabel),r.typeLabel||""].join(" "));
+    byId.set(r.id,r);
+    (byName.get(r.name)||byName.set(r.name,[]).get(r.name)).push(r);
+    if(r.outputId)(byOutId.get(r.outputId)||byOutId.set(r.outputId,[]).get(r.outputId)).push(r);
+  }
+  const rank=r=>{const i=stationOrder.indexOf(r.stations[0]);return i<0?99:i;};
+  for(const m of [byName,byOutId])for(const list of m.values())list.sort((a,b)=>rank(a)-rank(b));
+}
+function nameScore(r,tokens){
+  let s=0;
+  for(const t of tokens){
+    if(r._n===t)s+=0;else if(r._n.startsWith(t))s+=1;else if(r._n.includes(t))s+=2;else s+=3;
+  }
+  return s;
+}
+function computeView(){
+  const pool=all.filter(r=>(cat==="すべて"||r.category===cat)&&(!st||r.stations.includes(st)));
+  const tokens=norm(q).split(/\s+/).filter(Boolean);
+  if(!tokens.length)return {groups:[{title:"",rows:pool}],total:pool.length,searching:false};
+  const main=[],uses=[];
+  for(const r of pool){
+    if(tokens.every(t=>r._o.includes(t)))main.push([nameScore(r,tokens),r]);
+    else if(tokens.every(t=>r._h.includes(t)))uses.push(r);
+  }
+  main.sort((a,b)=>a[0]-b[0]);
+  const q0=q.trim(),groups=[];
+  if(main.length)groups.push({title:uses.length?`「${q0}」を作るレシピ（${main.length}）`:"",rows:main.map(x=>x[1])});
+  if(uses.length)groups.push({title:`「${q0}」を材料などに使うレシピ（${uses.length}）`,rows:uses});
+  return {groups,total:main.length+uses.length,searching:true};
+}
+function ingSummary(r){
+  const t=r.ingredients.slice(0,5).map(x=>x.name+(x.count>1?"×"+x.count:"")).join("、");
+  return t+(r.ingredients.length>5?" ほか":"");
+}
+function cardHTML(r){
+  const st=r.stations.map(stationLabel).join("・")||"特殊";
+  const cnt=(r.outputCount||1)>1?`<span class="cnt">×${esc(r.outputCount)}</span>`:"";
+  return `<button class="recipe" type="button" data-id="${esc(r.id)}"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><span class="rbody"><span class="rname">${esc(r.name)}${cnt}</span><span class="details">${esc(st)} ／ ${esc(ingSummary(r))}</span></span><span class="arrow" aria-hidden="true">›</span></button>`;
+}
+function render(opts={}){
+  if(opts.resetLimit!==false)limit=PAGE;
+  const v=computeView();
+  const filtered=!!(q.trim()||cat!=="すべて"||st);
+  $("#count").textContent=v.searching?`${v.total.toLocaleString()} 件ヒット`:`${v.total.toLocaleString()} / ${all.length.toLocaleString()} レシピ`;
+  $("#resetwrap").innerHTML=filtered?'<button class="link" type="button" data-act="reset">条件をすべて解除</button>':"";
+  $("#clear").hidden=!q;
+  if(!v.total){
+    $("#cards").innerHTML=`<div class="empty">該当するレシピがありません。<br>${filtered?'<button class="link" type="button" data-act="reset">条件をすべて解除</button>':""}</div>`;
+    return;
+  }
+  let left=limit,html="";
+  for(const g of v.groups){
+    if(left<=0)break;
+    if(g.title)html+=`<div class="grouphead">${esc(g.title)}</div>`;
+    const slice=g.rows.slice(0,left);
+    html+=slice.map(cardHTML).join("");
+    left-=slice.length;
+  }
+  if(v.total>limit)html+=`<button class="morebtn" type="button" data-act="more">さらに表示（残り ${(v.total-limit).toLocaleString()} 件）</button>`;
+  $("#cards").innerHTML=html;
+}
 function renderFilters(){
- $("#filters").innerHTML=categories.map(c=>`<button class="${c===active?'active':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
- $("#filters").querySelectorAll("button").forEach(b=>b.onclick=()=>{active=b.dataset.cat;renderFilters();render();});
+  $("#filters").innerHTML=categoryList.map(c=>`<button type="button" class="${c===cat?"active":""}" aria-pressed="${c===cat}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
 }
-function renderStations(){
- const stations=[...new Set(all.flatMap(r=>r.stations||[]))].sort((a,b)=>stationOrder.indexOf(a)-stationOrder.indexOf(b));
- $("#station").innerHTML='<option value="">すべての作業場所</option>'+stations.map(s=>`<option value="${esc(s)}">${esc(stationLabel(s))}</option>`).join("");
+// 絞り込み後は先頭の結果が検索バーのすぐ下に来るようにスクロール
+function toResults(){
+  const tb=$("#toolbar").getBoundingClientRect().bottom;
+  const mt=$("#meta").getBoundingClientRect().top;
+  if(mt<tb)window.scrollBy(0,mt-tb-6);
 }
-function render(){
- const q=$("#search").value.trim().toLocaleLowerCase(), st=$("#station").value;
- const rows=all.filter(r=>{
-  const cat=active==="すべて"||r.category===active;
-  const station=!st||(r.stations||[]).includes(st);
-  const hay=[r.name,r.output,...(r.ingredients||[]).map(x=>x.name),...(r.stations||[]).map(stationLabel),r.type].join(" ").toLocaleLowerCase();
-  return cat&&station&&(!q||hay.includes(q));
- });
- $("#count").textContent=`${rows.length.toLocaleString()} / ${all.length.toLocaleString()} レシピ`;
- $("#cards").innerHTML=rows.length?rows.map((r,i)=>`<button class="recipe" data-id="${esc(r.id)}"><span class="icon">${esc(r.emoji||"🧱")}</span><span><span class="rname">${esc(r.name)}</span><span class="details">${esc((r.stations||[]).map(stationLabel).join("・")||"特殊レシピ")} ／ ${esc(r.outputCount||1)}個</span></span><span class="arrow">›</span></button>`).join(""):`<div class="empty">該当するレシピがありません。検索語を変えてみてください。</div>`;
- $("#cards").querySelectorAll("button").forEach(b=>b.onclick=()=>showDetail(all.find(r=>r.id===b.dataset.id)));
+function saveState(){
+  const p=new URLSearchParams();
+  if(q)p.set("q",q);if(cat!=="すべて")p.set("c",cat);if(st)p.set("s",st);
+  const h=p.toString();
+  try{history.replaceState(history.state,"",h?"#"+h:location.pathname+location.search);}catch(e){}
 }
-function showDetail(r){
- current=r;
- const grid=r.grid&&r.grid.length?`<div><div class="craftgrid">${Array.from({length:9},(_,i)=>{const v=r.grid[i]||"";return `<div class="cell ${v?'':'empty'}" title="${esc(v)}">${esc(v||" ")}</div>`}).join("")}</div><div class="gridlabel">作業台の配置（上から見た図）</div></div>`:`<div class="muted" style="padding:12px;background:#26392b;border-radius:10px;text-align:center">${r.type==="shapeless"?"配置自由・空いているマスに材料を置けばOK":esc(r.stationText||"専用の作業場所で加工")}</div>`;
- const ing=(r.ingredients||[]).map(x=>`<li>${esc(x.name)} × ${esc(x.count||1)}</li>`).join("");
- const special=r.special?`<p class="muted">${esc(r.special)}</p>`:"";
- $("#detail").innerHTML=`<div class="detailhead"><span class="icon">${esc(r.emoji||"🧱")}</span><div><h2>${esc(r.name)}</h2><div class="muted">完成数：${esc(r.outputCount||1)}　／　${esc(r.stations?.map(stationLabel).join("・")||"特殊レシピ")}</div></div></div><div style="margin-top:10px">${(r.stations||[]).map(s=>`<span class="pill">${esc(stationLabel(s))}</span>`).join("")}<span class="pill">${esc(r.typeLabel||r.type||"レシピ")}</span></div><div class="detailgrid"><div><b style="font-size:13px">必要な材料・入力</b><ul class="ingredients">${ing||'<li>材料情報なし（特殊レシピ）</li>'}</ul>${special}</div>${grid}</div><button class="close" id="close">閉じる</button>`;
- $("#detail").classList.add("show");$("#detail").scrollIntoView({behavior:"smooth",block:"nearest"});
- $("#close").onclick=()=>$("#detail").classList.remove("show");
+function applyFilters(){saveState();render();toResults();}
+function resetAll(){q="";cat="すべて";st="";$("#search").value="";$("#station").value="";renderFilters();applyFilters();}
+
+/* ---------------------------------------------------------------- 詳細シート */
+let sheetOpen=false,pushed=false,stack=[],lastFocus=null;
+const root=$("#sheetRoot");
+
+function siblings(r){
+  const list=(r.outputId&&byOutId.get(r.outputId))||byName.get(r.name)||[];
+  return list.filter(x=>x!==r);
 }
+function recipesFor(ing,self){
+  if(!ing||!ing.name||String(ing.id||"").startsWith("#"))return [];
+  const list=(ing.id&&byOutId.get(ing.id))||byName.get(ing.name)||[];
+  return list.filter(x=>x!==self);
+}
+function sheetHTML(r){
+  const stations=r.stations.map(stationLabel).join("・")||"特殊レシピ";
+  let visual;
+  if(r.grid&&r.grid.some(Boolean)){
+    visual=`<div><div class="craftgrid">${Array.from({length:9},(_,i)=>{const v=r.grid[i]||"";return `<div class="cell ${v?"":"blank"}">${esc(v)}</div>`;}).join("")}</div><div class="gridlabel">作業台の配置（上から見た図）</div></div>`;
+  }else{
+    const text={shapeless:"配置自由<br>作業台の空いているマスに材料を置けばOK",process:`${esc(stations)}に材料を入れて加熱`,brewing:"醸造台で、ベースに材料を加えて醸造",smithing:"鍛冶台に、テンプレート・ベース・素材をセット"}[r.type]||esc(r.stationText||"専用の作業場所で加工");
+    visual=`<div class="flowbox">${text}</div>`;
+  }
+  const ings=r.ingredients.map((x,i)=>{
+    const role=x.role?`<span class="role">${esc(x.role)}</span>`:"";
+    const body=`${role}<span class="iname">${esc(x.name)}</span><span class="iqty">× ${esc(x.count||1)}</span>`;
+    return recipesFor(x,r).length?`<li><button class="ing" type="button" data-ing="${i}">${body}<span class="go">レシピ ›</span></button></li>`:`<li><div class="ing static">${body}</div></li>`;
+  }).join("");
+  const alts=siblings(r).slice(0,12).map(x=>`<button class="alt" type="button" data-alt="${esc(x.id)}">${esc(stationsOf(x))}<small>${esc(ingSummary(x))}</small></button>`).join("");
+  const altCount=siblings(r).length;
+  return `<div class="detailhead"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><div><h2 id="sheetTitle">${esc(r.name)}</h2><div class="muted">完成数：${esc(r.outputCount||1)}　／　${esc(stations)}</div></div></div>
+<div class="pills">${r.stations.map(s=>`<span class="pill">${esc(stationLabel(s))}</span>`).join("")}<span class="pill">${esc(r.typeLabel||r.type||"レシピ")}</span></div>
+<div class="detailgrid"><div><div class="sec">必要な材料・入力</div><ul class="ingredients">${ings||'<li><div class="ing static">材料情報なし（特殊レシピ）</div></li>'}</ul></div>${visual}</div>
+${alts?`<div style="margin-top:16px"><div class="sec">同じものを作る別のレシピ（${altCount}）</div><div class="alts">${alts}</div></div>`:""}
+<button class="act" type="button" data-act="uses">🔍 「${esc(r.name)}」を材料に使うレシピを探す</button>
+<button class="act sub2" type="button" data-act="close">閉じる</button>`;
+}
+function stationsOf(r){return r.stations.map(stationLabel).join("・")||"特殊レシピ";}
+function renderSheet(){
+  const r=stack[stack.length-1];
+  $("#sheetBody").innerHTML=sheetHTML(r);
+  $("#sheetBody").scrollTop=0;
+  $("#sheetBack").hidden=stack.length<2;
+}
+function openSheet(r,trigger){
+  if(!r)return;
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur(); // iOSのキーボードを閉じる
+  if(!sheetOpen){
+    sheetOpen=true;lastFocus=trigger||null;stack=[r];
+    root.classList.add("open");document.documentElement.classList.add("lock");
+    try{history.pushState({sheet:1},"");pushed=true;}catch(e){pushed=false;}
+  }else stack.push(r);
+  renderSheet();
+  $("#sheetClose").focus({preventScroll:true});
+}
+function closeSheet(fromPop){
+  if(!sheetOpen)return;
+  sheetOpen=false;stack=[];
+  root.classList.remove("open");document.documentElement.classList.remove("lock");
+  $("#sheet").style.transform="";
+  if(pushed&&!fromPop){pushed=false;try{history.back();}catch(e){}}else pushed=false;
+  if(lastFocus&&document.contains(lastFocus))lastFocus.focus({preventScroll:true});
+}
+window.addEventListener("popstate",()=>{if(sheetOpen)closeSheet(true);else saveState();});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&sheetOpen){closeSheet();return;}
+  if(e.key==="/"&&!sheetOpen&&!/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)){e.preventDefault();$("#search").focus();}
+});
+$("#backdrop").addEventListener("click",()=>closeSheet());
+$("#sheetClose").addEventListener("click",()=>closeSheet());
+$("#sheetBack").addEventListener("click",()=>{if(stack.length>1){stack.pop();renderSheet();}});
+$("#sheetBody").addEventListener("click",e=>{
+  const cur=stack[stack.length-1];
+  const ing=e.target.closest("[data-ing]");
+  if(ing){const x=cur.ingredients[+ing.dataset.ing];const list=recipesFor(x,cur);if(list.length)openSheet(list[0]);return;}
+  const alt=e.target.closest("[data-alt]");
+  if(alt){openSheet(byId.get(alt.dataset.alt));return;}
+  const act=e.target.closest("[data-act]");
+  if(!act)return;
+  if(act.dataset.act==="close")closeSheet();
+  if(act.dataset.act==="uses"){
+    const name=cur.name;closeSheet();
+    q=name;cat="すべて";st="";$("#search").value=q;$("#station").value="";renderFilters();
+    setTimeout(()=>{applyFilters();window.scrollTo(0,0);},30);
+  }
+});
+// 下スワイプで閉じる
+(()=>{
+  const bar=$("#sheetbar"),sheet=$("#sheet");let y0=null,dy=0;
+  bar.addEventListener("touchstart",e=>{y0=e.touches[0].clientY;dy=0;sheet.style.transition="none";},{passive:true});
+  bar.addEventListener("touchmove",e=>{if(y0==null)return;dy=Math.max(0,e.touches[0].clientY-y0);sheet.style.transform=`translateY(${dy}px)`;},{passive:true});
+  bar.addEventListener("touchend",()=>{if(y0==null)return;sheet.style.transition="";y0=null;if(dy>90)closeSheet();else sheet.style.transform="";});
+})();
+
+/* ---------------------------------------------------------------- 入力イベント */
+$("#cards").addEventListener("click",e=>{
+  const act=e.target.closest("[data-act]");
+  if(act){
+    if(act.dataset.act==="more"){limit+=PAGE;render({resetLimit:false});}
+    if(act.dataset.act==="reset")resetAll();
+    return;
+  }
+  const b=e.target.closest(".recipe");
+  if(b)openSheet(byId.get(b.dataset.id),b);
+});
+$("#resetwrap").addEventListener("click",e=>{if(e.target.closest("[data-act=reset]"))resetAll();});
+$("#filters").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-cat]");if(!b)return;
+  cat=b.dataset.cat;renderFilters();applyFilters();
+});
+$("#station").addEventListener("change",e=>{st=e.target.value;applyFilters();});
+$("#search").addEventListener("input",e=>{
+  q=e.target.value;$("#clear").hidden=!q;
+  clearTimeout(timer);timer=setTimeout(applyFilters,60);
+});
+$("#search").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur();}}); // 検索キーでキーボードを閉じて結果を見やすく
+$("#clear").addEventListener("click",()=>{q="";$("#search").value="";$("#search").focus();applyFilters();});
+
+/* ---------------------------------------------------------------- 初期化 */
+let categoryList=["すべて"];
 async function init(){
- try{
-  const res=await fetch("./data/recipes.json",{cache:"no-store"});
-  if(!res.ok)throw new Error("recipes.json が見つかりません");
-  const data=await res.json();all=data.recipes||[];
-  $("#version").textContent=data.gameVersion?`Bedrock ${data.gameVersion}`:"データ読込済み";
-  if(data.generatedAt)$("#version").textContent+=` ・ ${data.generatedAt}`;
-  renderStations();renderFilters();render();
- }catch(e){
-  $("#count").textContent="レシピデータ未生成";
-  $("#cards").innerHTML=`<div class="empty">まだ全レシピデータが作成されていません。GitHubへアップロード後、Actions の「Build recipe database」が完了すると表示されます。<br><br>エラー：${esc(e.message)}</div>`;
-  renderFilters();
- }
+  try{
+    const res=await fetch("./data/recipes.json",{cache:"no-store"});
+    if(!res.ok)throw new Error("recipes.json が見つかりません");
+    const data=await res.json();
+    all=data.recipes||[];prepare();
+    const present=new Set(all.map(r=>r.category));
+    categoryList=["すべて",...CAT_ORDER.filter(c=>present.has(c)),...[...present].filter(c=>!CAT_ORDER.includes(c))];
+    const stations=[...new Set(all.flatMap(r=>r.stations))].sort((a,b)=>stationOrder.indexOf(a)-stationOrder.indexOf(b));
+    $("#station").innerHTML='<option value="">全作業場所</option>'+stations.map(s=>`<option value="${esc(s)}">${esc(stationLabel(s))}</option>`).join("");
+    const v=[data.gameVersion?`Bedrock ${data.gameVersion}`:"データ読込済み"];
+    if(data.generatedAt)v.push(`更新 ${data.generatedAt.replace(" UTC","")}`);
+    $("#version").innerHTML=v.map(esc).join("<br>");
+    // 前回の検索条件（URLのハッシュ）を復元
+    const p=new URLSearchParams(location.hash.slice(1));
+    q=p.get("q")||"";cat=categoryList.includes(p.get("c"))?p.get("c"):"すべて";st=stations.includes(p.get("s"))?p.get("s"):"";
+    $("#search").value=q;$("#station").value=st;
+    renderFilters();render();
+  }catch(e){
+    $("#count").textContent="レシピデータ未生成";
+    $("#cards").innerHTML=`<div class="empty">まだレシピデータが作成されていません。GitHubへアップロード後、Actions の「Build recipe database」が完了すると表示されます。<br><br>エラー：${esc(e.message)}</div>`;
+    renderFilters();
+  }
 }
-$("#search").addEventListener("input",render);$("#station").addEventListener("change",render);init();
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+init();
+
+if("serviceWorker" in navigator){
+  const hadController=!!navigator.serviceWorker.controller;let reloaded=false;
+  // 新しいService Workerに切り替わったら一度だけ自動で再読み込みして最新UIにする
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadController&&!reloaded&&!sheetOpen){reloaded=true;location.reload();}});
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+})();
 </script>
-</body></html>
+</body>
+</html>
