@@ -32,13 +32,14 @@ COLOR_ITEMS = {
     "terracotta": "テラコッタ", "glazed_terracotta": "彩釉テラコッタ",
     "stained_glass": "色付きガラス", "stained_glass_pane": "色付きガラス板",
     "shulker_box": "シュルカーボックス", "dye": "染料", "harness": "ハーネス", "bundle": "バンドル",
+    "cushion": "クッション",
 }
 
 WOOD_JA = {
     "oak": "オーク", "spruce": "トウヒ", "birch": "シラカバ", "jungle": "ジャングル",
     "acacia": "アカシア", "dark_oak": "ダークオーク", "mangrove": "マングローブ",
     "cherry": "サクラ", "pale_oak": "ペールオーク", "bamboo": "竹", "crimson": "真紅",
-    "warped": "歪んだ",
+    "warped": "歪んだ", "poplar": "ポプラ",
 }
 WOOD_ITEMS = {
     "planks": "板材", "stairs": "階段", "slab": "ハーフブロック", "fence": "フェンス",
@@ -70,10 +71,17 @@ LEGACY = {
     "concrete": _tmpl(COLORS16, "{}_concrete"),
     "concrete_powder": _tmpl(COLORS16, "{}_concrete_powder"),
     "banner": _tmpl(DYE16, "{}_banner"),
-    "dye": (list(DYE16), ["ink_sac", "red_dye", "green_dye", "cocoa_beans", "lapis_lazuli",
-                          "purple_dye", "cyan_dye", "light_gray_dye", "gray_dye", "pink_dye",
-                          "lime_dye", "yellow_dye", "light_blue_dye", "magenta_dye",
-                          "orange_dye", "bone_meal"]),
+    # 16〜19 は後から追加された専用染料（黒・茶・青・白）
+    # サブ名は ja_JP.lang の item.dye.black_new.name などに合わせる（"black" だとイカスミになる）
+    "dye": (list(DYE16) + ["black_new", "brown_new", "blue_new", "white_new"],
+            ["ink_sac", "red_dye", "green_dye", "cocoa_beans", "lapis_lazuli",
+             "purple_dye", "cyan_dye", "light_gray_dye", "gray_dye", "pink_dye",
+             "lime_dye", "yellow_dye", "light_blue_dye", "magenta_dye",
+             "orange_dye", "bone_meal", "black_dye", "brown_dye", "blue_dye", "white_dye"]),
+    "wood": _tmpl(WOOD6, "{}_wood"),
+    "skull": (["skeleton", "wither", "zombie", "char", "creeper", "dragon", "piglin"],
+              ["skeleton_skull", "wither_skeleton_skull", "zombie_head", "player_head",
+               "creeper_head", "dragon_head", "piglin_head"]),
     "stone": (["stone", "granite", "granite_smooth", "diorite", "diorite_smooth", "andesite", "andesite_smooth"],
               ["stone", "granite", "polished_granite", "diorite", "polished_diorite", "andesite", "polished_andesite"]),
     "stonebrick": (["default", "mossy", "cracked", "chiseled"],
@@ -97,6 +105,7 @@ FAMILY_ANY = {
     "stained_glass_pane": "色付きガラス板（各色）", "stained_hardened_clay": "色付きテラコッタ（各色）",
     "concrete": "コンクリート（各色）", "concrete_powder": "コンクリートパウダー（各色）",
     "banner": "旗（各色）", "dye": "染料（各色）", "coal": "石炭または木炭",
+    "wood": "木（各種）", "skull": "頭（各種）",
 }
 # 旧形式IDの「ベース名のまま」（data=0扱い）を許可するもの
 LEGACY_PLAIN = {"stone", "stonebrick", "sandstone", "red_sandstone", "quartz_block", "sand", "coal", "golden_apple"}
@@ -255,6 +264,22 @@ DIRECT = {
     "popped_chorus_fruit": "焼いたコーラスフルーツ", "brown_mushroom": "茶キノコ", "red_mushroom": "赤キノコ",
     "pumpkin_seeds": "カボチャの種", "melon_seeds": "スイカの種", "beetroot_seeds": "ビートルートの種",
     "mushroom": "キノコ", "water_bottle": "水入りの瓶",
+    # 花
+    "dandelion": "タンポポ", "poppy": "ポピー", "blue_orchid": "ヒスイラン", "allium": "アリウム",
+    "azure_bluet": "ヒナソウ", "red_tulip": "赤色のチューリップ", "orange_tulip": "橙色のチューリップ",
+    "white_tulip": "白色のチューリップ", "pink_tulip": "桃色のチューリップ", "oxeye_daisy": "フランスギク",
+    "cornflower": "ヤグルマギク", "lily_of_the_valley": "スズラン", "sunflower": "ヒマワリ",
+    "lilac": "ライラック", "rose_bush": "バラの低木", "peony": "ボタン",
+    # 頭
+    "skeleton_skull": "スケルトンの頭蓋骨", "wither_skeleton_skull": "ウィザースケルトンの頭蓋骨",
+    "zombie_head": "ゾンビの頭", "player_head": "プレイヤーの頭", "creeper_head": "クリーパーの頭",
+    "dragon_head": "ドラゴンの頭", "piglin_head": "ピグリンの頭",
+    # 旧形式・別表記のID
+    "appleenchanted": "エンチャントされた金のリンゴ", "carrotonastick": "ニンジン付きの棒",
+    "emptymap": "空の地図", "netherstar": "ネザースター", "nether_star": "ネザースター",
+    "sealantern": "シーランタン", "fire_charge": "ファイヤーチャージ",
+    "lodestone_compass": "ロードストーンコンパス", "chest_boat": "オークのチェスト付きボート",
+    "disc_fragment_5": "ディスクの破片", "record_5": "レコード（5）",
 }
 
 PREFIX_JA = {
@@ -348,7 +373,7 @@ POTION_EFFECT = {
     "water_breathing": "水中呼吸", "healing": "治癒", "harming": "負傷", "poison": "毒",
     "regeneration": "再生", "strength": "力", "weakness": "弱化", "turtle_master": "カメの神",
     "slow_falling": "低速落下", "wind_charged": "風撃", "weaving": "粘着", "oozing": "滲出",
-    "infestation": "虫食い",
+    "infestation": "虫食い", "infested": "虫食い", "nightvision": "暗視",
 }
 POTION_BASE = {"awkward": "奇妙な", "mundane": "ありふれた", "thick": "濃厚な"}
 
@@ -361,6 +386,7 @@ def potion_name(path):
         return None
     if not tail or tail.lstrip("-").isdigit():
         return container
+    tail = tail.lower()  # 公式データに "Awkward" のような大文字表記が混ざるため
     if tail == "water":
         return "水入りの瓶" if container == "ポーション" else container
     mod = ""
@@ -389,4 +415,5 @@ TAG_JA = {
     "cherry_logs": "サクラの原木（各種）", "bamboo_blocks": "竹ブロック（各種）",
     "trimmable_armors": "装飾可能な防具", "trim_materials": "防具装飾の素材", "trim_templates": "防具装飾の鍛冶型",
     "terracotta": "テラコッタ（各色）", "concrete": "コンクリート（各色）", "candles": "ろうそく（各色）",
+    "metal_nuggets": "金属の塊（鉄・金など）", "mushrooms_for_stew": "キノコ（茶・赤）",
 }

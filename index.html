@@ -95,6 +95,15 @@ button.ing:active{background:var(--panel2)}
 .cell.blank{background:#b5b09f}
 .gridlabel{text-align:center;font-size:10px;color:var(--muted);margin-top:6px}
 .flowbox{padding:14px 12px;background:var(--panel2);border-radius:10px;text-align:center;font-size:12px;line-height:1.6;color:var(--muted)}
+.quick{grid-column:1/-1;margin-bottom:6px}
+.qhead{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--accent);margin:2px 2px 6px}
+.qhead .link{font-weight:400;color:var(--muted)}
+.qrow{display:flex;gap:7px;overflow-x:auto;margin:0 -13px;padding:0 13px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.qrow::-webkit-scrollbar{display:none}
+.qitem{flex:0 0 auto;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:7px 12px 7px 9px;font-size:13px;white-space:nowrap}
+.qitem:active{background:var(--panel2)}
+.favbtn{margin-left:auto;flex:0 0 auto;width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:20px;color:var(--muted)}
+.favbtn[aria-pressed="true"]{color:#ffd45c;border-color:#8a7a3c}
 .vsec{margin-top:12px}
 .vchips{display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .vchip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:7px 12px;font-size:12.5px;line-height:1.3;text-align:left}
@@ -196,7 +205,7 @@ function extLinksHTML(name){
 }
 const idWords=s=>String(s||"").replace(/^#?(minecraft:)?/,"").replace(/[_:]/g," ");
 
-let all=[], itemCount=0, byId=new Map(), byName=new Map(), byOutId=new Map();
+let all=[], itemCount=0, byKey=new Map(), byId=new Map(), byName=new Map(), byOutId=new Map();
 let q="", cat="すべて", st="", limit=PAGE;
 let timer=null;
 
@@ -215,7 +224,36 @@ function prepare(){
   }
   const rank=r=>{const i=stationOrder.indexOf(r.stations[0]);return i<0?99:i;};
   for(const m of [byName,byOutId])for(const list of m.values())list.sort((a,b)=>rank(a)-rank(b));
-  itemCount=new Set(all.map(keyOf)).size;
+  byKey.clear();
+  for(const r of all){const k=keyOf(r);if(!byKey.has(k))byKey.set(k,variantsOf(r)[0]);}
+  itemCount=byKey.size;
+}
+
+/* ---------------------------------------------------------------- 最近見た・お気に入り（端末内に保存） */
+const RECENT_MAX=12;
+function loadList(key){try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?v:[];}catch(e){return [];}}
+function saveList(key,list){try{localStorage.setItem(key,JSON.stringify(list));}catch(e){}}
+let recent=loadList("mcr.recent"),favs=loadList("mcr.fav"),listDirty=false;
+function addRecent(r){
+  const k=keyOf(r);
+  recent=[k,...recent.filter(x=>x!==k)].slice(0,RECENT_MAX);
+  saveList("mcr.recent",recent);listDirty=true;
+}
+const isFav=r=>favs.includes(keyOf(r));
+function toggleFav(r){
+  const k=keyOf(r);
+  favs=isFav(r)?favs.filter(x=>x!==k):[k,...favs];
+  saveList("mcr.fav",favs);listDirty=true;
+}
+function quickHTML(){
+  const row=(title,keys,act)=>{
+    const items=keys.map(k=>byKey.get(k)).filter(Boolean);
+    if(!items.length)return "";
+    const clear=act?`<button class="link" type="button" data-act="${act}">消す</button>`:"";
+    return `<div class="quick"><div class="qhead"><span>${title}</span>${clear}</div><div class="qrow">${items.map(r=>`<button class="qitem" type="button" data-id="${esc(r.id)}"><span aria-hidden="true">${esc(r.emoji||"🧱")}</span>${esc(r.name)}</button>`).join("")}</div></div>`;
+  };
+  const h=row("★ お気に入り",favs,"")+row("🕘 最近見たレシピ",recent,"clearRecent");
+  return h?h+'<div class="grouphead">すべてのアイテム</div>':"";
 }
 function nameScore(r,tokens){
   let s=0;
@@ -286,7 +324,8 @@ function render(opts={}){
     $("#cards").innerHTML=`<div class="empty">該当するレシピがありません。<br>${filtered?'<button class="link" type="button" data-act="reset">条件をすべて解除</button>':""}</div>`;
     return;
   }
-  let left=limit,html="";
+  let left=limit,html=filtered?"":quickHTML();
+  listDirty=false;
   for(const g of v.groups){
     if(left<=0)break;
     if(g.title)html+=`<div class="grouphead">${esc(g.title)}</div>`;
@@ -348,7 +387,9 @@ function sheetHTML(r){
     const labels=variantLabels(vars);
     varsHTML=`<div class="vsec"><div class="sec">作り方 ${vars.length}通り（タップで切り替え）</div><div class="vchips">${vars.map((x,i)=>`<button class="vchip${x===r?" active":""}" type="button" data-var="${esc(x.id)}" aria-pressed="${x===r}">${esc(labels[i])}</button>`).join("")}</div></div>`;
   }
-  return `<div class="detailhead"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><div><h2 id="sheetTitle">${esc(r.name)}</h2><div class="muted">完成数：${esc(r.outputCount||1)}　／　${esc(stations)}</div></div></div>
+  const fav=isFav(r);
+  const favBtn=`<button class="favbtn" type="button" data-act="fav" aria-pressed="${fav}" aria-label="${fav?"お気に入りから外す":"お気に入りに追加"}">${fav?"★":"☆"}</button>`;
+  return `<div class="detailhead"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><div><h2 id="sheetTitle">${esc(r.name)}</h2><div class="muted">完成数：${esc(r.outputCount||1)}　／　${esc(stations)}</div></div>${favBtn}</div>
 <div class="pills">${r.stations.map(s=>`<span class="pill">${esc(stationLabel(s))}</span>`).join("")}<span class="pill">${esc(r.typeLabel||r.type||"レシピ")}</span></div>
 ${varsHTML}
 <div class="detailgrid"><div><div class="sec">必要な材料・入力</div><ul class="ingredients">${ings||'<li><div class="ing static">材料情報なし（特殊レシピ）</div></li>'}</ul></div>${visual}</div>
@@ -373,6 +414,7 @@ function openSheet(r,trigger){
     root.classList.add("open");document.documentElement.classList.add("lock");
     try{history.pushState({sheet:1},"");pushed=true;}catch(e){pushed=false;}
   }else stack.push(r);
+  addRecent(r);
   renderSheet();
   $("#sheetClose").focus({preventScroll:true});
 }
@@ -382,6 +424,8 @@ function closeSheet(fromPop){
   root.classList.remove("open");document.documentElement.classList.remove("lock");
   $("#sheet").style.transform="";
   if(pushed&&!fromPop){pushed=false;try{history.back();}catch(e){}}else pushed=false;
+  // 履歴・お気に入りが変わっていたら、背面の一覧（ホームの上部）を更新
+  if(listDirty)render({resetLimit:false});
   if(lastFocus&&document.contains(lastFocus))lastFocus.focus({preventScroll:true});
 }
 window.addEventListener("popstate",()=>{if(sheetOpen)closeSheet(true);else saveState();});
@@ -402,6 +446,7 @@ $("#sheetBody").addEventListener("click",e=>{
   const act=e.target.closest("[data-act]");
   if(!act)return;
   if(act.dataset.act==="close")closeSheet();
+  if(act.dataset.act==="fav"){toggleFav(cur);renderSheet(true);}
   if(act.dataset.act==="uses"){
     const name=cur.name;closeSheet();
     q=name;cat="すべて";st="";$("#search").value=q;$("#station").value="";renderFilters();
@@ -422,9 +467,10 @@ $("#cards").addEventListener("click",e=>{
   if(act){
     if(act.dataset.act==="more"){limit+=PAGE;render({resetLimit:false});}
     if(act.dataset.act==="reset")resetAll();
+    if(act.dataset.act==="clearRecent"){recent=[];saveList("mcr.recent",recent);render({resetLimit:false});}
     return;
   }
-  const b=e.target.closest(".recipe");
+  const b=e.target.closest(".recipe,.qitem");
   if(b)openSheet(byId.get(b.dataset.id),b);
 });
 $("#resetwrap").addEventListener("click",e=>{if(e.target.closest("[data-act=reset]"))resetAll();});
