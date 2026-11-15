@@ -69,6 +69,15 @@ URL: https://kz1wg.github.io/MineCraft_recipe/
 
 アプリ（HTML）の更新は、通信できるときは常に最新版を取得し、オフラインのときだけキャッシュを使います。新しい版が見つかると一度だけ自動で再読み込みします。
 
+## アクセス解析
+
+[GoatCounter](https://www.goatcounter.com)（Cookie不使用）で閲覧数を計測しています。
+
+- URLの `#` 以降（検索語・絞り込み条件）は送信されません。
+- 表示言語は `lang-ja` / `lang-en` というイベントとして記録され、言語ごとの利用数を比較できます。
+- 自分のアクセスを除外するには、その端末のブラウザで公開URLの末尾に `#toggle-goatcounter` を付けて一度開きます（もう一度開くと解除）。
+- `localhost` からのアクセスは自動的に計測されません。
+
 ## 更新
 
 GitHub Actionsは毎週月曜日に公式サンプルデータを取得し直します。手動更新したい場合は、Actions → Build recipe database → Run workflow を実行してください。

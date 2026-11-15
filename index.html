@@ -11,6 +11,8 @@
 <meta name="description" content="Minecraft Bedrock Editionのレシピを検索できるiPhone向け図鑑">
 <title>マイクラ レシピ図鑑</title>
 <link rel="manifest" href="./manifest.webmanifest">
+<!-- アクセス解析（GoatCounter：Cookie不使用）。URLの # 以降（検索語など）は送信されない -->
+<script id="gcScript" data-goatcounter="https://rustcian777.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 <style>
 :root{color-scheme:dark;--bg:#101812;--head:#243b2b;--panel:#1b2a20;--panel2:#26392b;--line:#3d5942;--text:#f3f7f0;--muted:#b6c5b5;--accent:#a4d58d;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -186,7 +188,7 @@ const I18N={
     searchPh:"名前・材料で検索",searchAria:"アイテム名・材料名で検索",clearAria:"検索語を消す",
     stationAria:"作業場所で絞り込み",allStations:"全作業場所",catAria:"カテゴリ",loading:"レシピを読み込み中…",
     notice:"※ この図鑑はMojang公式のBedrockサンプルデータをもとに生成しています。クラフト・加工レシピの図鑑であり、ゲーム内の全アイテム一覧ではありません。ドロップ・取引・構造物からのみ入手するアイテムや、アドオン独自のレシピは表示されません。<br>レシピはゲームの更新で変更される場合があります。データ更新日とバージョンは右上に表示します。",
-    footer:"非公式ファンツール。Minecraft は Mojang Studios / Microsoft の商標です。",
+    footer:"非公式ファンツール。Minecraft は Mojang Studios / Microsoft の商標です。アクセス解析に GoatCounter（Cookie不使用）を利用しています。",
     back:"‹ 戻る",backAria:"前のレシピに戻る",closeAria:"閉じる",close:"閉じる",
     other:"その他",listSep:"、",nameSep:"・",stSep:"・",detailSep:" ／ ",etc:" ほか",colon:"：",numbered:"{t}（{n}）",
     fav:"★ お気に入り",recent:"🕘 最近見たレシピ",clear:"消す",allItems:"すべてのアイテム",
@@ -218,7 +220,7 @@ const I18N={
     searchPh:"Search by name or ingredient",searchAria:"Search by item or ingredient name",clearAria:"Clear search",
     stationAria:"Filter by station",allStations:"All stations",catAria:"Categories",loading:"Loading recipes…",
     notice:"* This guide is generated from Mojang's official Bedrock sample data. It covers crafting and processing recipes and is not a list of every item in the game. Items obtained only from drops, trading, or structures, and add-on recipes, are not shown.<br>Recipes may change with game updates. The data date and version are shown at the top right.",
-    footer:"Unofficial fan tool. Minecraft is a trademark of Mojang Studios / Microsoft.",
+    footer:"Unofficial fan tool. Minecraft is a trademark of Mojang Studios / Microsoft. This site uses GoatCounter for cookie-free analytics.",
     back:"‹ Back",backAria:"Back to previous recipe",closeAria:"Close",close:"Close",
     other:"Other",listSep:", ",nameSep:", ",stSep:" / ",detailSep:" — ",etc:", etc.",colon:": ",numbered:"{t} ({n})",
     fav:"★ Favorites",recent:"🕘 Recently viewed",clear:"Clear",allItems:"All items",
@@ -627,6 +629,13 @@ async function init(){
 }
 $("#langBtn").addEventListener("click",switchLang);
 init();
+
+// 表示言語をGoatCounterのイベントとして記録（ダッシュボードで lang-ja / lang-en の件数を比較できる）
+(()=>{
+  const send=()=>{try{window.goatcounter.count({path:"lang-"+LANG,title:"Language: "+LANG,event:true});}catch(e){}};
+  if(window.goatcounter&&window.goatcounter.count)send();
+  else{const s=document.getElementById("gcScript");if(s)s.addEventListener("load",send,{once:true});}
+})();
 
 if("serviceWorker" in navigator){
   const hadController=!!navigator.serviceWorker.controller;let reloaded=false;
