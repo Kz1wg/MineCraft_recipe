@@ -107,6 +107,16 @@ FAMILY_ANY = {
     "banner": "旗（各色）", "dye": "染料（各色）", "coal": "石炭または木炭",
     "wood": "木（各種）", "skull": "頭（各種）",
 }
+FAMILY_ANY_EN = {
+    "planks": "Planks (any)", "log": "Logs (any)", "log2": "Logs (any)",
+    "leaves": "Leaves (any)", "leaves2": "Leaves (any)", "sapling": "Saplings (any)",
+    "wooden_slab": "Wooden Slabs (any)", "wool": "Wool (any color)",
+    "carpet": "Carpet (any color)", "stained_glass": "Stained Glass (any color)",
+    "stained_glass_pane": "Stained Glass Pane (any color)", "stained_hardened_clay": "Terracotta (any color)",
+    "concrete": "Concrete (any color)", "concrete_powder": "Concrete Powder (any color)",
+    "banner": "Banner (any color)", "dye": "Dye (any color)", "coal": "Coal or Charcoal",
+    "wood": "Wood (any)", "skull": "Head (any)",
+}
 # 旧形式IDの「ベース名のまま」（data=0扱い）を許可するもの
 LEGACY_PLAIN = {"stone", "stonebrick", "sandstone", "red_sandstone", "quartz_block", "sand", "coal", "golden_apple"}
 
@@ -117,19 +127,20 @@ for _fam, (_subs, _flats) in LEGACY.items():
         FLAT_TO_LEGACY.setdefault(_f, (_fam, "silver" if _s == "light_gray" else _s))
 
 
-def flatten_legacy(path, data, is_result):
+def flatten_legacy(path, data, is_result, lang="ja"):
     """旧形式 (path, data) を新形式IDへ。戻り値: (flat_id, any_name)。
-    any_name が入っていれば「何でもOK」な材料。"""
+    any_name が入っていれば「何でもOK」な材料（lang の言語での表示名）。"""
     if path not in LEGACY:
         return path, None
+    any_names = FAMILY_ANY if lang == "ja" else FAMILY_ANY_EN
     subs, flats = LEGACY[path]
     if data is None:
         if is_result or path in LEGACY_PLAIN:
             data = 0
         else:
-            return path, FAMILY_ANY.get(path)
+            return path, any_names.get(path)
     if data in (-1, 32767):
-        return path, FAMILY_ANY.get(path)
+        return path, any_names.get(path)
     if 0 <= data < len(flats):
         return flats[data], None
     return path, None
@@ -282,6 +293,25 @@ DIRECT = {
     "disc_fragment_5": "ディスクの破片", "record_5": "レコード（5）",
 }
 
+# 英語名: en_US.lang で引けない／別キー（item.dye.black = Ink Sac など）に当たりやすい旧形式IDだけを登録する
+DIRECT_EN = {
+    "appleenchanted": "Enchanted Golden Apple", "enchanted_golden_apple": "Enchanted Golden Apple",
+    "carrotonastick": "Carrot on a Stick", "emptymap": "Empty Map", "netherstar": "Nether Star",
+    "sealantern": "Sea Lantern", "chest_boat": "Oak Boat with Chest", "record_5": "Music Disc (5)",
+    "disc_fragment_5": "Disc Fragment", "lit_pumpkin": "Jack o'Lantern", "reeds": "Sugar Cane",
+    "wooden_door": "Oak Door", "wooden_button": "Oak Button", "wooden_pressure_plate": "Oak Pressure Plate",
+    "trapdoor": "Oak Trapdoor", "fence": "Oak Fence", "fence_gate": "Oak Fence Gate", "boat": "Oak Boat",
+    "sign": "Oak Sign", "magma": "Magma Block", "slime": "Slime Block", "melon_block": "Melon",
+    "stonecutter_block": "Stonecutter", "unpowered_repeater": "Redstone Repeater",
+    "unpowered_comparator": "Redstone Comparator", "lit_redstone_lamp": "Redstone Lamp",
+    "golden_rail": "Powered Rail", "hardened_clay": "Terracotta", "brick_block": "Bricks",
+    "black_dye": "Black Dye", "brown_dye": "Brown Dye", "blue_dye": "Blue Dye", "white_dye": "White Dye",
+    "ink_sac": "Ink Sac", "bone_meal": "Bone Meal", "cocoa_beans": "Cocoa Beans", "lapis_lazuli": "Lapis Lazuli",
+    "lily_of_the_valley": "Lily of the Valley", "skeleton_skull": "Skeleton Skull",
+    "wither_skeleton_skull": "Wither Skeleton Skull", "zombie_head": "Zombie Head", "player_head": "Player Head",
+    "creeper_head": "Creeper Head", "dragon_head": "Dragon Head", "piglin_head": "Piglin Head",
+}
+
 PREFIX_JA = {
     "waxed": "錆止めされた", "exposed": "風化した", "weathered": "錆びた", "oxidized": "酸化した",
     "polished": "磨かれた", "smooth": "滑らかな", "cut": "切り込み入りの", "chiseled": "模様入りの",
@@ -401,6 +431,45 @@ def potion_name(path):
     return None
 
 
+POTION_CONTAINER_EN = {
+    "potion": "Potion", "potion_type": "Potion",
+    "splash_potion": "Splash Potion", "lingering_potion": "Lingering Potion",
+}
+POTION_EFFECT_EN = {
+    "night_vision": "Night Vision", "nightvision": "Night Vision", "invisibility": "Invisibility",
+    "leaping": "Leaping", "fire_resistance": "Fire Resistance", "swiftness": "Swiftness", "swift": "Swiftness",
+    "slowness": "Slowness", "slow": "Slowness", "water_breathing": "Water Breathing", "healing": "Healing",
+    "harming": "Harming", "poison": "Poison", "regeneration": "Regeneration", "strength": "Strength",
+    "weakness": "Weakness", "turtle_master": "the Turtle Master", "slow_falling": "Slow Falling",
+    "wind_charged": "Wind Charging", "weaving": "Weaving", "oozing": "Oozing",
+    "infestation": "Infestation", "infested": "Infestation",
+}
+POTION_BASE_EN = {"awkward": "Awkward", "mundane": "Mundane", "thick": "Thick"}
+
+
+def potion_name_en(path):
+    """potion_name の英語版。非ポーションは None。"""
+    head, _, tail = path.partition(":")
+    container = POTION_CONTAINER_EN.get(head)
+    if not container:
+        return None
+    if not tail or tail.lstrip("-").isdigit():
+        return container
+    tail = tail.lower()
+    if tail == "water":
+        return "Water Bottle" if container == "Potion" else f"{container} of Water"
+    mod = ""
+    if tail.startswith("long_"):
+        tail, mod = tail[5:], " (Long)"
+    elif tail.startswith("strong_"):
+        tail, mod = tail[7:], " II"
+    if tail in POTION_BASE_EN:
+        return f"{POTION_BASE_EN[tail]} {container}"
+    if tail in POTION_EFFECT_EN:
+        return f"{container} of {POTION_EFFECT_EN[tail]}{mod}"
+    return None
+
+
 # ---------------------------------------------------------------- タグ
 TAG_JA = {
     "planks": "板材（各種）", "logs": "原木（各種）", "logs_that_burn": "燃える原木（各種）",
@@ -416,4 +485,21 @@ TAG_JA = {
     "trimmable_armors": "装飾可能な防具", "trim_materials": "防具装飾の素材", "trim_templates": "防具装飾の鍛冶型",
     "terracotta": "テラコッタ（各色）", "concrete": "コンクリート（各色）", "candles": "ろうそく（各色）",
     "metal_nuggets": "金属の塊（鉄・金など）", "mushrooms_for_stew": "キノコ（茶・赤）",
+}
+TAG_EN = {
+    "planks": "Planks (any)", "logs": "Logs (any)", "logs_that_burn": "Burnable Logs (any)",
+    "wooden_slabs": "Wooden Slabs (any)", "wooden_stairs": "Wooden Stairs (any)",
+    "wooden_doors": "Wooden Doors (any)", "wooden_buttons": "Wooden Buttons (any)",
+    "wooden_pressure_plates": "Wooden Pressure Plates (any)", "wooden_fences": "Wooden Fences (any)",
+    "wooden_trapdoors": "Wooden Trapdoors (any)", "boats": "Boats (any)", "chest_boats": "Boats with Chest (any)",
+    "stone_crafting_materials": "Stone Crafting Materials (Cobblestone, etc.)",
+    "stone_tool_materials": "Stone Tool Materials (Cobblestone, etc.)",
+    "stone_slabs": "Stone Slabs (any)", "wool": "Wool (any color)", "sand": "Sand", "glass": "Glass",
+    "leaves": "Leaves (any)", "coals": "Coal or Charcoal", "soul_fire_base_blocks": "Soul Sand / Soul Soil",
+    "crimson_stems": "Crimson Stems (any)", "warped_stems": "Warped Stems (any)",
+    "mangrove_logs": "Mangrove Logs (any)", "cherry_logs": "Cherry Logs (any)",
+    "bamboo_blocks": "Blocks of Bamboo (any)", "trimmable_armors": "Trimmable Armor",
+    "trim_materials": "Trim Materials", "trim_templates": "Armor Trim Templates",
+    "terracotta": "Terracotta (any color)", "concrete": "Concrete (any color)", "candles": "Candles (any color)",
+    "metal_nuggets": "Metal Nuggets (Iron, Gold, etc.)", "mushrooms_for_stew": "Mushrooms (Brown / Red)",
 }

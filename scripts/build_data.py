@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Mojang/bedrock-samples から日本語対応のレシピ索引 data/recipes.json を生成する。
+"""Mojang/bedrock-samples からレシピ索引を言語ごとに生成する。
+  日本語: data/recipes.json     （未解決: data/untranslated.txt）
+  英語  : data/recipes.en.json  （未解決: data/untranslated_en.txt）
 
 日本語名の解決順:
   1. scripts/ja_overrides.json（手動の上書き）
   2. resource_pack/texts/ja_JP.lang
   3. scripts/ja_names.py（旧形式data値の変換・辞書・ルール）
   4. en_US.lang / ID（英語のまま。data/untranslated.txt に記録）
+
+英語名の解決順:
+  1. scripts/en_overrides.json（手動の上書き）
+  2. resource_pack/texts/en_US.lang
+  3. scripts/ja_names.py の英語辞書 DIRECT_EN（旧形式IDなど）
+  4. IDを単語ごとに大文字化（data/untranslated_en.txt に記録）
 """
 import json
 import os
@@ -19,9 +27,12 @@ import ja_names as J  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = Path(os.environ.get("BEDROCK_SOURCE", ROOT / "source"))
-OUT = ROOT / "data" / "recipes.json"
-UNTRANSLATED_OUT = ROOT / "data" / "untranslated.txt"
-OVERRIDES_PATH = Path(__file__).resolve().parent / "ja_overrides.json"
+LANGS = {
+    "ja": {"out": ROOT / "data" / "recipes.json", "untranslated": ROOT / "data" / "untranslated.txt",
+           "overrides": Path(__file__).resolve().parent / "ja_overrides.json"},
+    "en": {"out": ROOT / "data" / "recipes.en.json", "untranslated": ROOT / "data" / "untranslated_en.txt",
+           "overrides": Path(__file__).resolve().parent / "en_overrides.json"},
+}
 RECIPES_DIR = SOURCE / "behavior_pack" / "recipes"
 TEXT_DIR = SOURCE / "resource_pack" / "texts"
 
@@ -60,8 +71,53 @@ def read_overrides(path):
 
 ja = read_lang(TEXT_DIR / "ja_JP.lang")
 en = read_lang(TEXT_DIR / "en_US.lang")
-OVERRIDES = read_overrides(OVERRIDES_PATH)
+OVERRIDES_BY_LANG = {k: read_overrides(v["overrides"]) for k, v in LANGS.items()}
+
+# 生成中の言語（main() が言語ごとに切り替える）
+LANG = "ja"
+OVERRIDES = OVERRIDES_BY_LANG["ja"]
 UNRESOLVED = {}  # flat id -> 画面に出る暫定名
+SEP = "／"       # 「AまたはB」の材料をまとめるときの区切り
+
+
+def set_lang(lang):
+    global LANG, OVERRIDES, UNRESOLVED, SEP
+    LANG = lang
+    OVERRIDES = OVERRIDES_BY_LANG[lang]
+    UNRESOLVED = {}
+    SEP = "／" if lang == "ja" else " / "
+
+
+# 材料の役割・レシピ種別の表示名（言語ごと）
+ROLES = {
+    "input": {"ja": "入力", "en": "Input"}, "base": {"ja": "ベース", "en": "Base"},
+    "reagent": {"ja": "材料", "en": "Ingredient"}, "template": {"ja": "テンプレート", "en": "Template"},
+    "addition": {"ja": "素材", "en": "Material"},
+    # extras.json 用
+    "body": {"ja": "体", "en": "Body"}, "head": {"ja": "頭", "en": "Head"},
+    "frame": {"ja": "枠", "en": "Frame"}, "ignite": {"ja": "着火", "en": "Igniter"},
+    "insert": {"ja": "はめ込み", "en": "Insert"}, "core": {"ja": "本体", "en": "Core"},
+    "foundation": {"ja": "土台", "en": "Foundation"}, "payment": {"ja": "支払い", "en": "Payment"},
+}
+TYPE_LABELS = {
+    "shaped": {"ja": "配置あり", "en": "Shaped"}, "shapeless": {"ja": "配置自由", "en": "Shapeless"},
+    "process": {"ja": "精錬・加熱", "en": "Smelting/Cooking"}, "brewing": {"ja": "醸造", "en": "Brewing"},
+    "smithing": {"ja": "鍛冶", "en": "Smithing"}, "build": {"ja": "設置・召喚", "en": "Build & Summon"},
+}
+
+
+def role(key):
+    return ROLES[key][LANG] if key in ROLES else key
+
+
+def type_label(key):
+    return TYPE_LABELS.get(key, {}).get(LANG, key)
+
+
+def title_id(value):
+    """英語の最終手段: 'blue_orchid' -> 'Blue Orchid'"""
+    value = str(value or "").split(":")[-1].replace(".", "_")
+    return " ".join(w.capitalize() for w in value.split("_") if w)
 
 
 # ------------------------------------------------------------------ 名前解決
@@ -102,24 +158,34 @@ def lang_keys(ns, flat):
 
 
 def resolve(value, data=None, is_result=False):
-    """アイテム参照 -> (日本語名, 正規化ID)"""
+    """アイテム参照 -> (現在の言語での名前, 正規化ID)"""
     if not isinstance(value, str) or not value.strip():
         return "", ""
     ns, path, sdata = parse_ref(value)
     if data is None:
         data = sdata
 
-    pn = J.potion_name(path)
+    pn = J.potion_name(path) if LANG == "ja" else J.potion_name_en(path)
     if pn:
         return pn, path.replace(":", "_")
 
-    flat, any_name = J.flatten_legacy(path, data, is_result)
+    flat, any_name = J.flatten_legacy(path, data, is_result, LANG)
     if any_name:
         return any_name, flat
     if flat in OVERRIDES:
         return OVERRIDES[flat], flat
 
     keys = lang_keys(ns, flat)
+    if LANG == "en":
+        # 旧形式IDは en_US.lang の別キー（イカスミ等）に当たりやすいので辞書を先に見る
+        if flat in J.DIRECT_EN:
+            return J.DIRECT_EN[flat], flat
+        for k in keys:
+            if k in en:
+                return en[k], flat
+        UNRESOLVED[flat] = title_id(flat)
+        return title_id(flat), flat
+
     for k in keys:
         if k in ja:
             return ja[k], flat
@@ -140,6 +206,11 @@ def tag_name(tag):
     key = "#" + t
     if key in OVERRIDES or t in OVERRIDES:
         return OVERRIDES.get(key) or OVERRIDES[t], key
+    if LANG == "en":
+        if t in J.TAG_EN:
+            return J.TAG_EN[t], key
+        UNRESOLVED[key] = title_id(t) + " (any)"
+        return title_id(t) + " (any)", key
     if t in J.TAG_JA:
         return J.TAG_JA[t], key
     for cand in (t, t[:-1] if t.endswith("s") else "", t[:-2] if t.endswith("es") else ""):
@@ -166,7 +237,7 @@ def descriptor(obj, is_result=False):
         for d in ds:
             if d["name"] not in names:
                 names.append(d["name"])
-        return {"name": "／".join(names), "count": ds[0]["count"], "id": ds[0]["id"]}
+        return {"name": SEP.join(names), "count": ds[0]["count"], "id": ds[0]["id"]}
     if not isinstance(obj, dict):
         return {"name": str(obj), "count": 1, "id": ""}
     count = int(obj.get("count", 1) or 1)
@@ -255,23 +326,24 @@ def tokens_of(name_id):
 
 
 def category_for(name_id, station):
+    """カテゴリID（表示名は index.html 側で言語ごとに付ける）"""
     n = name_id.lower()
     t = tokens_of(n)
     if station == "brewing_stand":
-        return "醸造"
+        return "brewing"
     if n in TOOL_IDS or (t & TOOL_TOKENS and "block" not in t) or ("armor" in t and "stand" not in t):
-        return "道具・装備"
+        return "equipment"
     if t & FOOD_TOKENS and "block" not in t:
-        return "食料"
+        return "food"
     if "potion" in t:
-        return "醸造"
+        return "brewing"
     if t & REDSTONE_TOKENS:
-        return "レッドストーン・乗り物"
+        return "redstone"
     if t & BUILD_TOKENS:
-        return "建築"
+        return "building"
     if t & MATERIAL_TOKENS:
-        return "素材"
-    return "その他"
+        return "materials"
+    return "other"
 
 
 EMOJI_RULES = [
@@ -337,10 +409,10 @@ def parse_file(path):
 
     ingredients, grid = [], []
     out_name, out_count, out_id = "", 1, ""
-    typ, typ_label = "other", "特殊"
+    typ = "other"
 
     if typkey.endswith("recipe_shaped"):
-        typ, typ_label = "shaped", "配置あり"
+        typ = "shaped"
         pattern = body.get("pattern", [])
         key = body.get("key", {})
         raw_items = []
@@ -358,27 +430,30 @@ def parse_file(path):
         ingredients = merge_ingredients(raw_items)
         out_name, out_count, out_id = output_info(body.get("result"))
     elif typkey.endswith("recipe_shapeless"):
-        typ, typ_label = "shapeless", "配置自由"
+        typ = "shapeless"
         ingredients = merge_ingredients(normalize_list(body.get("ingredients")))
         out_name, out_count, out_id = output_info(body.get("result"))
     elif any(k in typkey for k in ("recipe_furnace", "recipe_blast_furnace", "recipe_smoker", "recipe_campfire")):
-        typ, typ_label = "process", "精錬・加熱"
-        ingredients = merge_ingredients(normalize_list(body.get("input"), "入力"))
+        typ = "process"
+        ingredients = merge_ingredients(normalize_list(body.get("input"), role("input")))
         out_name, out_count, out_id = output_info(body.get("output", body.get("output ")))
     elif "recipe_brewing" in typkey:
-        typ, typ_label = "brewing", "醸造"
-        ingredients = merge_ingredients(normalize_list(body.get("input"), "ベース")
-                                        + normalize_list(body.get("reagent"), "材料"))
+        typ = "brewing"
+        ingredients = merge_ingredients(normalize_list(body.get("input"), role("base"))
+                                        + normalize_list(body.get("reagent"), role("reagent")))
         out_name, out_count, out_id = output_info(body.get("output", body.get("output ")))
     elif "recipe_smithing" in typkey:
-        typ, typ_label = "smithing", "鍛冶"
-        ingredients = merge_ingredients(normalize_list(body.get("template"), "テンプレート")
-                                        + normalize_list(body.get("base"), "ベース")
-                                        + normalize_list(body.get("addition"), "素材"))
+        typ = "smithing"
+        ingredients = merge_ingredients(normalize_list(body.get("template"), role("template"))
+                                        + normalize_list(body.get("base"), role("base"))
+                                        + normalize_list(body.get("addition"), role("addition")))
         out_name, out_count, out_id = output_info(body.get("result"))
         if "recipe_smithing_trim" in typkey:
             base_name = descriptor(body.get("base"))["name"] if body.get("base") else ""
-            out_name = (base_name + "の装飾") if base_name else "防具の装飾（トリム）"
+            if LANG == "ja":
+                out_name = (base_name + "の装飾") if base_name else "防具の装飾（トリム）"
+            else:
+                out_name = (base_name + " (Trim)") if base_name else "Armor Trim"
     else:
         return None
 
@@ -398,17 +473,14 @@ def parse_file(path):
         "grid": grid,
         "stations": stations,
         "type": typ,
-        "typeLabel": typ_label,
+        "typeLabel": type_label(typ),
         "category": category_for(cat_id, station),
         "emoji": emoji_for(cat_id),
-        "special": "",
-        "stationText": " / ".join(stations),
     }
 
 
 # ------------------------------------------------------------------ 手書きの追加データ（召喚・ポータルなど）
 EXTRAS_PATH = Path(__file__).resolve().parent / "extras.json"
-LANG = "ja"
 
 
 def tr(value, default=""):
@@ -425,9 +497,9 @@ def parse_extra(b):
         d = descriptor([f"minecraft:{i}" for i in ids if i])
         if spec.get("label"):
             d["name"] = tr(spec["label"], d["name"])
-        d["count"] = spec.get("count", 1)
+        d["count"] = tr(spec.get("count", 1), 1)
         if spec.get("role"):
-            d["role"] = spec["role"]
+            d["role"] = role(spec["role"])
         ingredients.append(d)
     rec = {
         "id": b["id"],
@@ -439,11 +511,9 @@ def parse_extra(b):
         "grid": [],
         "stations": ["world"],
         "type": "build",
-        "typeLabel": "設置・召喚",
-        "category": "設置・召喚",
+        "typeLabel": type_label("build"),
+        "category": "world",
         "emoji": b.get("emoji", "🧱"),
-        "special": "",
-        "stationText": "ワールドに設置",
         "notes": tr(b.get("notes"), []),
     }
     lay = b.get("layout")
@@ -458,7 +528,7 @@ def parse_extra(b):
             "rows": len(rows),
             "cells": [key.get(ch, "") if ch != " " else "" for ch in chars],
             "optional": [i for i, ch in enumerate(chars) if ch in opt_keys],  # 置かなくてもよいマス
-            "caption": tr(lay.get("caption"), "正面から見た図"),
+            "caption": tr(lay.get("caption"), ""),  # 空なら画面側の既定文言（正面から見た図）
         }
     return rec
 
@@ -490,14 +560,20 @@ def find_version():
                         return str(d[k])
             except Exception:  # noqa: BLE001
                 pass
-    return "公式サンプルデータ main"
+    return ""  # 不明なときは空（画面側で「公式サンプルデータ main」と表示）
 
 
-def main():
-    if not RECIPES_DIR.exists():
-        raise SystemExit(f"Recipe directory not found: {RECIPES_DIR}")
-    if not ja:
-        print("WARNING: ja_JP.lang が見つかりません。辞書・ルールだけで日本語化します。")
+UNTRANSLATED_HEADER = {
+    "ja": ("# 日本語名を解決できずに英語表示になっているID（ID<TAB>画面に出る名前）\n"
+           "# scripts/ja_overrides.json に  \"ID\": \"日本語名\"  を足すと次回ビルドから日本語になります。\n"),
+    "en": ("# IDs whose English name was not found in en_US.lang and was generated from the ID (ID<TAB>shown name)\n"
+           "# Add  \"ID\": \"English name\"  to scripts/en_overrides.json to fix it in the next build.\n"),
+}
+
+
+def build(lang, version):
+    set_lang(lang)
+    conf = LANGS[lang]
     records, skipped = [], []
     for p in sorted(RECIPES_DIR.rglob("*.json")):
         try:
@@ -512,26 +588,36 @@ def main():
     unique = {r["id"]: r for r in records}
     records = sorted(unique.values(), key=lambda r: (r["name"], r["id"]))
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"source": "Mojang/bedrock-samples", "gameVersion": find_version(),
+    conf["out"].parent.mkdir(parents=True, exist_ok=True)
+    payload = {"source": "Mojang/bedrock-samples", "lang": lang, "gameVersion": version,
                "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"),
                "recipeCount": len(records), "recipes": records}
-    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    conf["out"].write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
     lines = [f"{k}\t{v}" for k, v in sorted(UNRESOLVED.items())]
-    header = ("# 日本語名を解決できずに英語表示になっているID（ID<TAB>画面に出る名前）\n"
-              "# scripts/ja_overrides.json に  \"ID\": \"日本語名\"  を足すと次回ビルドから日本語になります。\n")
-    UNTRANSLATED_OUT.write_text(header + "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    conf["untranslated"].write_text(UNTRANSLATED_HEADER[lang] + "\n".join(lines) + ("\n" if lines else ""),
+                                    encoding="utf-8")
 
-    print(f"Wrote {len(records)} recipes to {OUT} (extras: {len(extras)})")
-    print(f"Japanese name lookups: ja_JP.lang={len(ja)} keys, overrides={len(OVERRIDES)}")
-    print(f"Untranslated ids: {len(UNRESOLVED)} (see {UNTRANSLATED_OUT.name})")
+    print(f"[{lang}] Wrote {len(records)} recipes to {conf['out'].name} (extras: {len(extras)}, overrides: {len(OVERRIDES)})")
+    print(f"[{lang}] Untranslated ids: {len(UNRESOLVED)} (see {conf['untranslated'].name})")
     for line in lines[:40]:
         print("  -", line.replace("\t", " -> "))
     if skipped:
-        print(f"Skipped {len(skipped)} files due to errors:")
+        print(f"[{lang}] Skipped {len(skipped)} files due to errors:")
         for s in skipped[:20]:
             print("  -", s)
+
+
+def main():
+    if not RECIPES_DIR.exists():
+        raise SystemExit(f"Recipe directory not found: {RECIPES_DIR}")
+    if not ja:
+        print("WARNING: ja_JP.lang が見つかりません。辞書・ルールだけで日本語化します。")
+    if not en:
+        print("WARNING: en_US.lang not found. English names will be generated from IDs.")
+    version = find_version()
+    for lang in LANGS:
+        build(lang, version)
 
 
 if __name__ == "__main__":

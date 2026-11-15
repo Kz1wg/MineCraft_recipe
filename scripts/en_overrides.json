@@ -1,0 +1,7 @@
+{
+  "_comment": "Manual English name overrides. Add IDs listed in data/untranslated_en.txt here to fix them in the next build.",
+  "_example": "\"diamond_sword\": \"Diamond Sword\"  — tags use a leading #, e.g. \"#planks\": \"Planks (any)\".",
+  "dripstone_block_from_pointed_dripstone": "Dripstone Block",
+  "honey_bottle_to_sugar": "Sugar",
+  "normal_stone_slab": "Stone Slab"
+}

@@ -22,7 +22,9 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:var(--sat);ba
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 
-.top{padding:calc(10px + var(--sat)) 14px 8px;background:var(--head);display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.top{padding:calc(10px + var(--sat)) 14px 8px;background:var(--head);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.topright{display:flex;align-items:center;gap:8px;min-width:0}
+.langbtn{flex:0 0 auto;border:1px solid var(--line);background:#0e1711;border-radius:999px;padding:5px 10px;font-size:11.5px;color:var(--text);white-space:nowrap}
 h1{font-size:17px;margin:0;white-space:nowrap}
 .sub{font-size:10.5px;color:#c4d4c1;text-align:right;line-height:1.35}
 
@@ -128,8 +130,8 @@ button.ing:active{background:var(--panel2)}
 </head>
 <body>
 <header class="top">
-  <h1>⛏ マイクラ レシピ図鑑</h1>
-  <div class="sub" id="version">統合版 / Bedrock</div>
+  <h1 id="appTitle">⛏ マイクラ レシピ図鑑</h1>
+  <div class="topright"><div class="sub" id="version">統合版 / Bedrock</div><button class="langbtn" id="langBtn" type="button">English</button></div>
 </header>
 
 <div class="toolbar" id="toolbar">
@@ -147,11 +149,8 @@ button.ing:active{background:var(--panel2)}
 <main>
   <div class="meta" id="meta"><span id="count" aria-live="polite">レシピを読み込み中…</span><span id="resetwrap"></span></div>
   <section class="cards" id="cards"></section>
-  <p class="notice">
-    ※ この図鑑はMojang公式のBedrockサンプルデータをもとに生成しています。クラフト・加工レシピの図鑑であり、ゲーム内の全アイテム一覧ではありません。ドロップ・取引・構造物からのみ入手するアイテムや、アドオン独自のレシピは表示されません。<br>
-    レシピはゲームの更新で変更される場合があります。データ更新日とバージョンは右上に表示します。
-  </p>
-  <footer>非公式ファンツール。Minecraft は Mojang Studios / Microsoft の商標です。</footer>
+  <p class="notice" id="notice"></p>
+  <footer id="footer"></footer>
 </main>
 
 <div class="sheetroot" id="sheetRoot">
@@ -171,12 +170,124 @@ button.ing:active{background:var(--panel2)}
 "use strict";
 const $=s=>document.querySelector(s);
 const PAGE=100;
-const collator=new Intl.Collator("ja");
-const CAT_ORDER=["建築","道具・装備","食料","レッドストーン・乗り物","素材","醸造","設置・召喚","その他"];
-const stationNames={world:"ワールドに設置",crafting_table:"作業台",stonecutter:"石切台",furnace:"かまど",blast_furnace:"溶鉱炉",smoker:"燻製器",campfire:"焚き火",soul_campfire:"魂の焚き火",smithing_table:"鍛冶台",brewing_stand:"醸造台",cartography_table:"製図台"};
-const stationOrder=Object.keys(stationNames);
-const stationLabel=s=>stationNames[s]||s||"その他";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------------------------------------------------------------- 言語（日本語 / English） */
+// 端末の言語が日本語なら日本語、それ以外は英語。ボタンで手動切り替えした場合だけ保存した値を優先する
+const LANGS=["ja","en"];
+const LANG=(()=>{
+  try{const s=localStorage.getItem("mcr.lang");if(LANGS.includes(s))return s;}catch(e){}
+  const pref=((navigator.languages&&navigator.languages[0])||navigator.language||"").toLowerCase();
+  return pref.startsWith("ja")?"ja":"en";
+})();
+const I18N={
+  ja:{
+    title:"マイクラ レシピ図鑑",appTitle:"⛏ マイクラ レシピ図鑑",edition:"統合版 / Bedrock",
+    searchPh:"名前・材料で検索",searchAria:"アイテム名・材料名で検索",clearAria:"検索語を消す",
+    stationAria:"作業場所で絞り込み",allStations:"全作業場所",catAria:"カテゴリ",loading:"レシピを読み込み中…",
+    notice:"※ この図鑑はMojang公式のBedrockサンプルデータをもとに生成しています。クラフト・加工レシピの図鑑であり、ゲーム内の全アイテム一覧ではありません。ドロップ・取引・構造物からのみ入手するアイテムや、アドオン独自のレシピは表示されません。<br>レシピはゲームの更新で変更される場合があります。データ更新日とバージョンは右上に表示します。",
+    footer:"非公式ファンツール。Minecraft は Mojang Studios / Microsoft の商標です。",
+    back:"‹ 戻る",backAria:"前のレシピに戻る",closeAria:"閉じる",close:"閉じる",
+    other:"その他",listSep:"、",nameSep:"・",stSep:"・",detailSep:" ／ ",etc:" ほか",colon:"：",numbered:"{t}（{n}）",
+    fav:"★ お気に入り",recent:"🕘 最近見たレシピ",clear:"消す",allItems:"すべてのアイテム",
+    groupMake:"「{q}」を作るレシピ（{n}）",groupUse:"「{q}」を材料などに使うレシピ（{n}）",
+    ways:"{n}通り",special:"特殊",specialRecipe:"特殊レシピ",
+    hits:"{n} 件ヒット",items:"{n} / {t} アイテム",reset:"条件をすべて解除",empty:"該当するレシピがありません。",
+    more:"さらに表示（残り {n} 件）",
+    gridLabel:"作業台の配置（上から見た図）",layoutLabel:"正面から見た図",
+    flow_build:"ワールドにブロックを並べて作ります。下の「作り方のポイント」を参照",
+    flow_shapeless:"配置自由<br>作業台の空いているマスに材料を置けばOK",flow_process:"{st}に材料を入れて加熱",
+    flow_brewing:"醸造台で、ベースに材料を加えて醸造",flow_smithing:"鍛冶台に、テンプレート・ベース・素材をセット",
+    flow_other:"専用の作業場所で加工",
+    recipeLink:"レシピ ›",variantsHead:"作り方 {n}通り（タップで切り替え）",favAdd:"お気に入りに追加",favRemove:"お気に入りから外す",
+    makes:"完成数：{n}",ingHead:"必要な材料・入力",noIng:"材料情報なし（特殊レシピ）",notesHead:"作り方のポイント",
+    uses:"🔍 「{name}」を材料に使うレシピを探す",recipe:"レシピ",
+    wiki:"https://ja.minecraft.wiki/w/Special:Search?search=",wikiLabel:"📖 「{name}」をWikiで詳しく見る",wikiIng:"📖 Wiki",
+    sampleMain:"公式サンプルデータ main",loaded:"データ読込済み",updated:"更新 {d}",
+    noData:"レシピデータ未生成",
+    noDataMsg:"まだレシピデータが作成されていません。GitHubへアップロード後、Actions の「Build recipe database」が完了すると表示されます。",
+    error:"エラー：",langBtn:"English",langBtnAria:"Switch to English",
+    cat_all:"すべて",cat_building:"建築",cat_equipment:"道具・装備",cat_food:"食料",cat_redstone:"レッドストーン・乗り物",
+    cat_materials:"素材",cat_brewing:"醸造",cat_world:"設置・召喚",cat_other:"その他",
+    st_world:"ワールドに設置",st_crafting_table:"作業台",st_stonecutter:"石切台",st_furnace:"かまど",st_blast_furnace:"溶鉱炉",
+    st_smoker:"燻製器",st_campfire:"焚き火",st_soul_campfire:"魂の焚き火",st_smithing_table:"鍛冶台",st_brewing_stand:"醸造台",
+    st_cartography_table:"製図台"
+  },
+  en:{
+    title:"Minecraft Recipe Book",appTitle:"⛏ Minecraft Recipe Book",edition:"Bedrock Edition",
+    searchPh:"Search by name or ingredient",searchAria:"Search by item or ingredient name",clearAria:"Clear search",
+    stationAria:"Filter by station",allStations:"All stations",catAria:"Categories",loading:"Loading recipes…",
+    notice:"* This guide is generated from Mojang's official Bedrock sample data. It covers crafting and processing recipes and is not a list of every item in the game. Items obtained only from drops, trading, or structures, and add-on recipes, are not shown.<br>Recipes may change with game updates. The data date and version are shown at the top right.",
+    footer:"Unofficial fan tool. Minecraft is a trademark of Mojang Studios / Microsoft.",
+    back:"‹ Back",backAria:"Back to previous recipe",closeAria:"Close",close:"Close",
+    other:"Other",listSep:", ",nameSep:", ",stSep:" / ",detailSep:" — ",etc:", etc.",colon:": ",numbered:"{t} ({n})",
+    fav:"★ Favorites",recent:"🕘 Recently viewed",clear:"Clear",allItems:"All items",
+    groupMake:"Recipes that make \"{q}\" ({n})",groupUse:"Recipes that use \"{q}\" ({n})",
+    ways:"{n} ways",special:"Special",specialRecipe:"Special recipe",
+    hits:"{n} results",items:"{n} / {t} items",reset:"Clear all filters",empty:"No matching recipes.",
+    more:"Show more ({n} left)",
+    gridLabel:"Crafting grid (top view)",layoutLabel:"Front view",
+    flow_build:"Built by placing blocks in the world. See \"Tips\" below.",
+    flow_shapeless:"Shapeless<br>Put the ingredients in any free slots of the crafting grid",flow_process:"Put the ingredients in the {st}",
+    flow_brewing:"Add the ingredient to the base in a Brewing Stand",flow_smithing:"Put the template, base, and material in a Smithing Table",
+    flow_other:"Made at a special station",
+    recipeLink:"Recipe ›",variantsHead:"{n} ways to make (tap to switch)",favAdd:"Add to favorites",favRemove:"Remove from favorites",
+    makes:"Makes: {n}",ingHead:"Ingredients",noIng:"No ingredient data (special recipe)",notesHead:"Tips",
+    uses:"🔍 Find recipes that use \"{name}\"",recipe:"Recipe",
+    wiki:"https://minecraft.wiki/w/Special:Search?search=",wikiLabel:"📖 Read about \"{name}\" on the Wiki",wikiIng:"📖 Wiki",
+    sampleMain:"official samples (main)",loaded:"Data loaded",updated:"Updated {d}",
+    noData:"Recipe data not generated",
+    noDataMsg:"Recipe data has not been generated yet. It will appear after the \"Build recipe database\" GitHub Action finishes.",
+    error:"Error: ",langBtn:"日本語",langBtnAria:"日本語に切り替え",
+    cat_all:"All",cat_building:"Building",cat_equipment:"Tools & Gear",cat_food:"Food",cat_redstone:"Redstone & Transport",
+    cat_materials:"Materials",cat_brewing:"Brewing",cat_world:"Build & Summon",cat_other:"Other",
+    st_world:"Placed in world",st_crafting_table:"Crafting Table",st_stonecutter:"Stonecutter",st_furnace:"Furnace",
+    st_blast_furnace:"Blast Furnace",st_smoker:"Smoker",st_campfire:"Campfire",st_soul_campfire:"Soul Campfire",
+    st_smithing_table:"Smithing Table",st_brewing_stand:"Brewing Stand",st_cartography_table:"Cartography Table"
+  }
+};
+// 文言の取得。{name} などの差し込みは、HTMLに入れる側でエスケープ済みの値を渡す
+function T(key,vars){
+  let s=I18N[LANG][key]??I18N.ja[key]??key;
+  if(vars)for(const [k,v] of Object.entries(vars))s=s.split("{"+k+"}").join(v);
+  return s;
+}
+const DATA_URL=LANG==="ja"?"./data/recipes.json":"./data/recipes.en.json";
+const collator=new Intl.Collator(LANG);
+
+const CAT_ORDER=["building","equipment","food","redstone","materials","brewing","world","other"];
+const catLabel=c=>I18N[LANG]["cat_"+c]??c;
+const stationOrder=["world","crafting_table","stonecutter","furnace","blast_furnace","smoker","campfire","soul_campfire","smithing_table","brewing_stand","cartography_table"];
+const stationLabel=s=>(s&&I18N[LANG]["st_"+s])||s||T("other");
+
+function applyStatic(){
+  document.documentElement.lang=LANG;
+  document.title=T("title");
+  $("#appTitle").textContent=T("appTitle");
+  $("#version").textContent=T("edition");
+  $("#search").placeholder=T("searchPh");
+  $("#search").setAttribute("aria-label",T("searchAria"));
+  $("#clear").setAttribute("aria-label",T("clearAria"));
+  $("#station").setAttribute("aria-label",T("stationAria"));
+  $("#filters").setAttribute("aria-label",T("catAria"));
+  $("#count").textContent=T("loading");
+  $("#notice").innerHTML=T("notice");
+  $("#footer").textContent=T("footer");
+  $("#sheetBack").textContent=T("back");
+  $("#sheetBack").setAttribute("aria-label",T("backAria"));
+  $("#sheetClose").setAttribute("aria-label",T("closeAria"));
+  const lb=$("#langBtn");
+  lb.textContent=T("langBtn");lb.setAttribute("aria-label",T("langBtnAria"));lb.lang=LANG==="ja"?"en":"ja";
+}
+// 切り替えた言語を保存して読み直す（検索語は言語が違うと当たらないので消す。カテゴリ・作業場所は維持）
+function switchLang(){
+  const next=LANG==="ja"?"en":"ja";
+  try{localStorage.setItem("mcr.lang",next);}catch(e){}
+  const p=new URLSearchParams(location.hash.slice(1));p.delete("q");
+  const h=p.toString();
+  try{history.replaceState(null,"",h?"#"+h:location.pathname+location.search);}catch(e){}
+  location.reload();
+}
 
 // 検索用の正規化：全角半角・大文字小文字・ひらがな/カタカナの違いを吸収
 function norm(s){
@@ -184,24 +295,19 @@ function norm(s){
     .replace(/[\u3041-\u3096]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60))
     .replace(/[・･]/g,"");
 }
-// 外部リンク設定。将来English対応する際は LANG を切り替え、en 側の文言とURLを使う
-// （英語Wikiは英名が必要なので、データ側に英名フィールドを足してから name に渡す想定）
-const LANG="ja";
-const EXT={
-  ja:{wiki:"https://ja.minecraft.wiki/w/Special:Search?search=",label:"📖 「{name}」をWikiで詳しく見る",ingLabel:"📖 Wiki"},
-  en:{wiki:"https://minecraft.wiki/w/Special:Search?search=",label:"📖 Read about \"{name}\" on the Wiki",ingLabel:"📖 Wiki"}
-}[LANG];
-// 「板材（各種）」「エンドポータル（起動）」の末尾の補足は外して検索する（記事名に一致しやすくする）
+// Wikiリンク（言語ごとに日本語版／英語版のWikiを使う）
+// 「板材（各種）」「Planks (any)」「エンドポータル（起動）」の末尾の補足は外して検索する（記事名に一致しやすくする）
 const wikiTerm=name=>String(name).replace(/\s*[（(][^（）()]*[）)]\s*$/,"").trim()||String(name);
-const wikiURL=name=>EXT.wiki+encodeURIComponent(wikiTerm(name));
+const wikiURL=name=>T("wiki")+encodeURIComponent(wikiTerm(name));
 const extA=(href,label,cls="ext")=>`<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
 function extLinksHTML(name){
-  return `<div class="extlinks">${extA(wikiURL(name),EXT.label.replace("{name}",name))}</div>`;
+  return `<div class="extlinks">${extA(wikiURL(name),T("wikiLabel",{name}))}</div>`;
 }
+const isMulti=name=>/／| \/ /.test(String(name));
 const idWords=s=>String(s||"").replace(/^#?(minecraft:)?/,"").replace(/[_:]/g," ");
 
 let all=[], itemCount=0, byKey=new Map(), byId=new Map(), byName=new Map(), byOutId=new Map();
-let q="", cat="すべて", st="", limit=PAGE;
+let q="", cat="all", st="", limit=PAGE;
 let timer=null;
 
 /* ---------------------------------------------------------------- 検索・一覧 */
@@ -244,11 +350,11 @@ function quickHTML(){
   const row=(title,keys,act)=>{
     const items=keys.map(k=>byKey.get(k)).filter(Boolean);
     if(!items.length)return "";
-    const clear=act?`<button class="link" type="button" data-act="${act}">消す</button>`:"";
-    return `<div class="quick"><div class="qhead"><span>${title}</span>${clear}</div><div class="qrow">${items.map(r=>`<button class="qitem" type="button" data-id="${esc(r.id)}"><span aria-hidden="true">${esc(r.emoji||"🧱")}</span>${esc(r.name)}</button>`).join("")}</div></div>`;
+    const clear=act?`<button class="link" type="button" data-act="${act}">${esc(T("clear"))}</button>`:"";
+    return `<div class="quick"><div class="qhead"><span>${esc(title)}</span>${clear}</div><div class="qrow">${items.map(r=>`<button class="qitem" type="button" data-id="${esc(r.id)}"><span aria-hidden="true">${esc(r.emoji||"🧱")}</span>${esc(r.name)}</button>`).join("")}</div></div>`;
   };
-  const h=row("★ お気に入り",favs,"")+row("🕘 最近見たレシピ",recent,"clearRecent");
-  return h?h+'<div class="grouphead">すべてのアイテム</div>':"";
+  const h=row(T("fav"),favs,"")+row(T("recent"),recent,"clearRecent");
+  return h?h+`<div class="grouphead">${esc(T("allItems"))}</div>`:"";
 }
 function nameScore(r,tokens){
   let s=0;
@@ -258,7 +364,7 @@ function nameScore(r,tokens){
   return s;
 }
 function computeView(){
-  const pool=all.filter(r=>(cat==="すべて"||r.category===cat)&&(!st||r.stations.includes(st)));
+  const pool=all.filter(r=>(cat==="all"||r.category===cat)&&(!st||r.stations.includes(st)));
   const tokens=norm(q).split(/\s+/).filter(Boolean);
   if(!tokens.length){const rows=collapse(pool);return {groups:[{title:"",rows}],total:rows.length,searching:false};}
   const main=[],uses=[];
@@ -269,8 +375,8 @@ function computeView(){
   main.sort((a,b)=>a[0]-b[0]);
   const q0=q.trim(),groups=[];
   const mi=collapse(main.map(x=>x[1])),ui=collapse(uses);
-  if(mi.length)groups.push({title:ui.length?`「${q0}」を作るレシピ（${mi.length}）`:"",rows:mi});
-  if(ui.length)groups.push({title:`「${q0}」を材料などに使うレシピ（${ui.length}）`,rows:ui});
+  if(mi.length)groups.push({title:ui.length?T("groupMake",{q:q0,n:mi.length}):"",rows:mi});
+  if(ui.length)groups.push({title:T("groupUse",{q:q0,n:ui.length}),rows:ui});
   return {groups,total:mi.length+ui.length,searching:true};
 }
 // 同じ完成品のレシピを1件にまとめる（材料違い・作業場所違いの別レシピ）
@@ -288,35 +394,37 @@ function variantLabels(list){
   const multiSt=new Set(list.map(stationsOf)).size>1;
   const labels=list.map((r,i)=>{
     const d=names[i].filter(n=>!common.includes(n));
-    let t=d.slice(0,2).join("・")+(d.length>2?" ほか":"");
-    if(multiSt)t=stationsOf(r)+(t?"："+t:"");
+    let t=d.slice(0,2).join(T("nameSep"))+(d.length>2?T("etc"):"");
+    if(multiSt)t=stationsOf(r)+(t?T("colon")+t:"");
     return t||stationsOf(r);
   });
   const seen=new Map();
-  return labels.map(t=>{const n=(seen.get(t)||0)+1;seen.set(t,n);return labels.filter(x=>x===t).length>1?`${t}（${n}）`:t;});
+  return labels.map(t=>{const n=(seen.get(t)||0)+1;seen.set(t,n);return labels.filter(x=>x===t).length>1?T("numbered",{t,n}):t;});
 }
 function ingSummary(r){
-  const t=r.ingredients.slice(0,5).map(x=>x.name+(x.count!=null&&x.count!=1?"×"+x.count:"")).join("、");
-  return t+(r.ingredients.length>5?" ほか":"");
+  const t=r.ingredients.slice(0,5).map(x=>x.name+(x.count!=null&&x.count!=1?"×"+x.count:"")).join(T("listSep"));
+  return t+(r.ingredients.length>5?T("etc"):"");
 }
 function cardHTML({r,list}){
   const n=list.length;
-  const st=[...new Set(list.flatMap(x=>x.stations))].map(stationLabel).join("・")||"特殊";
+  const st=[...new Set(list.flatMap(x=>x.stations))].map(stationLabel).join(T("stSep"))||T("special");
   const cnt=(r.outputCount||1)>1&&n===1?`<span class="cnt">×${esc(r.outputCount)}</span>`:"";
-  const badge=n>1?`<span class="vcnt">${n}通り</span>`:"";
+  const badge=n>1?`<span class="vcnt">${esc(T("ways",{n}))}</span>`:"";
   let detail=ingSummary(r);
-  if(n>1){const l=variantLabels(list);detail=l.slice(0,3).join("、")+(n>3?" ほか":"");}
-  return `<button class="recipe" type="button" data-id="${esc(r.id)}"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><span class="rbody"><span class="rname">${esc(r.name)}${cnt}${badge}</span><span class="details">${esc(st)} ／ ${esc(detail)}</span></span><span class="arrow" aria-hidden="true">›</span></button>`;
+  if(n>1){const l=variantLabels(list);detail=l.slice(0,3).join(T("listSep"))+(n>3?T("etc"):"");}
+  return `<button class="recipe" type="button" data-id="${esc(r.id)}"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><span class="rbody"><span class="rname">${esc(r.name)}${cnt}${badge}</span><span class="details">${esc(st)}${esc(T("detailSep"))}${esc(detail)}</span></span><span class="arrow" aria-hidden="true">›</span></button>`;
 }
 function render(opts={}){
   if(opts.resetLimit!==false)limit=PAGE;
   const v=computeView();
-  const filtered=!!(q.trim()||cat!=="すべて"||st);
-  $("#count").textContent=v.searching?`${v.total.toLocaleString()} 件ヒット`:`${v.total.toLocaleString()} / ${itemCount.toLocaleString()} アイテム`;
-  $("#resetwrap").innerHTML=filtered?'<button class="link" type="button" data-act="reset">条件をすべて解除</button>':"";
+  const filtered=!!(q.trim()||cat!=="all"||st);
+  const nf=n=>n.toLocaleString(LANG);
+  $("#count").textContent=v.searching?T("hits",{n:nf(v.total)}):T("items",{n:nf(v.total),t:nf(itemCount)});
+  const resetBtn=`<button class="link" type="button" data-act="reset">${esc(T("reset"))}</button>`;
+  $("#resetwrap").innerHTML=filtered?resetBtn:"";
   $("#clear").hidden=!q;
   if(!v.total){
-    $("#cards").innerHTML=`<div class="empty">該当するレシピがありません。<br>${filtered?'<button class="link" type="button" data-act="reset">条件をすべて解除</button>':""}</div>`;
+    $("#cards").innerHTML=`<div class="empty">${esc(T("empty"))}<br>${filtered?resetBtn:""}</div>`;
     return;
   }
   let left=limit,html=filtered?"":quickHTML();
@@ -328,11 +436,11 @@ function render(opts={}){
     html+=slice.map(cardHTML).join("");
     left-=slice.length;
   }
-  if(v.total>limit)html+=`<button class="morebtn" type="button" data-act="more">さらに表示（残り ${(v.total-limit).toLocaleString()} 件）</button>`;
+  if(v.total>limit)html+=`<button class="morebtn" type="button" data-act="more">${esc(T("more",{n:nf(v.total-limit)}))}</button>`;
   $("#cards").innerHTML=html;
 }
 function renderFilters(){
-  $("#filters").innerHTML=categoryList.map(c=>`<button type="button" class="${c===cat?"active":""}" aria-pressed="${c===cat}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+  $("#filters").innerHTML=categoryList.map(c=>`<button type="button" class="${c===cat?"active":""}" aria-pressed="${c===cat}" data-cat="${esc(c)}">${esc(catLabel(c))}</button>`).join("");
 }
 // 絞り込み後は先頭の結果が検索バーのすぐ下に来るようにスクロール
 function toResults(){
@@ -342,12 +450,12 @@ function toResults(){
 }
 function saveState(){
   const p=new URLSearchParams();
-  if(q)p.set("q",q);if(cat!=="すべて")p.set("c",cat);if(st)p.set("s",st);
+  if(q)p.set("q",q);if(cat!=="all")p.set("c",cat);if(st)p.set("s",st);
   const h=p.toString();
   try{history.replaceState(history.state,"",h?"#"+h:location.pathname+location.search);}catch(e){}
 }
 function applyFilters(){saveState();render();toResults();}
-function resetAll(){q="";cat="すべて";st="";$("#search").value="";$("#station").value="";renderFilters();applyFilters();}
+function resetAll(){q="";cat="all";st="";$("#search").value="";$("#station").value="";renderFilters();applyFilters();}
 
 /* ---------------------------------------------------------------- 詳細シート */
 let sheetOpen=false,pushed=false,stack=[],lastFocus=null;
@@ -359,25 +467,27 @@ function recipesFor(ing,self){
   return list.filter(x=>x!==self);
 }
 function sheetHTML(r){
-  const stations=r.stations.map(stationLabel).join("・")||"特殊レシピ";
+  const stations=stationsOf(r);
   let visual;
   if(r.grid&&r.grid.some(Boolean)){
-    visual=`<div><div class="craftgrid">${Array.from({length:9},(_,i)=>{const v=r.grid[i]||"";return `<div class="cell ${v?"":"blank"}">${esc(v)}</div>`;}).join("")}</div><div class="gridlabel">作業台の配置（上から見た図）</div></div>`;
+    visual=`<div><div class="craftgrid">${Array.from({length:9},(_,i)=>{const v=r.grid[i]||"";return `<div class="cell ${v?"":"blank"}">${esc(v)}</div>`;}).join("")}</div><div class="gridlabel">${esc(T("gridLabel"))}</div></div>`;
   }else if(r.layout&&r.layout.cells){
     // 召喚・ポータルなど：ワールドに並べる形（列数は可変）
     const L=r.layout;
     const c=+L.cols||1,rw=+L.rows||1,opt=new Set(L.optional||[]);
-    visual=`<div><div class="craftgrid" style="grid-template-columns:repeat(${c},1fr);aspect-ratio:${c}/${rw};width:min(100%,${c*50}px);margin:0 auto">${L.cells.map((v,i)=>`<div class="cell ${opt.has(i)?"opt":v?"":"blank"}">${esc(v)}</div>`).join("")}</div><div class="gridlabel">${esc(L.caption||"正面から見た図")}</div></div>`;
+    visual=`<div><div class="craftgrid" style="grid-template-columns:repeat(${c},1fr);aspect-ratio:${c}/${rw};width:min(100%,${c*50}px);margin:0 auto">${L.cells.map((v,i)=>`<div class="cell ${opt.has(i)?"opt":v?"":"blank"}">${esc(v)}</div>`).join("")}</div><div class="gridlabel">${esc(L.caption||T("layoutLabel"))}</div></div>`;
   }else{
-    const text={build:"ワールドにブロックを並べて作ります。下の「作り方のポイント」を参照",shapeless:"配置自由<br>作業台の空いているマスに材料を置けばOK",process:`${esc(stations)}に材料を入れて加熱`,brewing:"醸造台で、ベースに材料を加えて醸造",smithing:"鍛冶台に、テンプレート・ベース・素材をセット"}[r.type]||esc(r.stationText||"専用の作業場所で加工");
+    // flow_* の文言はHTML（<br>）を含むので、差し込む値だけエスケープする
+    const known=["build","shapeless","process","brewing","smithing"].includes(r.type);
+    const text=known?T("flow_"+r.type,{st:esc(stations)}):esc(T("flow_other"));
     visual=`<div class="flowbox">${text}</div>`;
   }
   const ings=r.ingredients.map((x,i)=>{
     const role=x.role?`<span class="role">${esc(x.role)}</span>`:"";
     const body=`${role}<span class="iname">${esc(x.name)}</span><span class="iqty">× ${esc(x.count||1)}</span>`;
-    if(recipesFor(x,r).length)return `<li><button class="ing" type="button" data-ing="${i}">${body}<span class="go">レシピ ›</span></button></li>`;
+    if(recipesFor(x,r).length)return `<li><button class="ing" type="button" data-ing="${i}">${body}<span class="go">${esc(T("recipeLink"))}</span></button></li>`;
     // クラフトできない材料（タグ・複数候補の材料を除く）には Wiki へのリンクを付ける
-    const get=x.name&&!String(x.id||"").startsWith("#")&&!x.name.includes("／")?extA(wikiURL(x.name),EXT.ingLabel,"ilink"):"";
+    const get=x.name&&!String(x.id||"").startsWith("#")&&!isMulti(x.name)?extA(wikiURL(x.name),T("wikiIng"),"ilink"):"";
     return `<li><div class="ing static">${body}${get}</div></li>`;
   }).join("");
   // 同じ完成品の別レシピは、チップで切り替える
@@ -385,20 +495,20 @@ function sheetHTML(r){
   let varsHTML="";
   if(vars.length>1){
     const labels=variantLabels(vars);
-    varsHTML=`<div class="vsec"><div class="sec">作り方 ${vars.length}通り（タップで切り替え）</div><div class="vchips">${vars.map((x,i)=>`<button class="vchip${x===r?" active":""}" type="button" data-var="${esc(x.id)}" aria-pressed="${x===r}">${esc(labels[i])}</button>`).join("")}</div></div>`;
+    varsHTML=`<div class="vsec"><div class="sec">${esc(T("variantsHead",{n:vars.length}))}</div><div class="vchips">${vars.map((x,i)=>`<button class="vchip${x===r?" active":""}" type="button" data-var="${esc(x.id)}" aria-pressed="${x===r}">${esc(labels[i])}</button>`).join("")}</div></div>`;
   }
   const fav=isFav(r);
-  const favBtn=`<button class="favbtn" type="button" data-act="fav" aria-pressed="${fav}" aria-label="${fav?"お気に入りから外す":"お気に入りに追加"}">${fav?"★":"☆"}</button>`;
-  return `<div class="detailhead"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><div><h2 id="sheetTitle">${esc(r.name)}</h2><div class="muted">完成数：${esc(r.outputCount||1)}　／　${esc(stations)}</div></div>${favBtn}</div>
-<div class="pills">${r.stations.map(s=>`<span class="pill">${esc(stationLabel(s))}</span>`).join("")}<span class="pill">${esc(r.typeLabel||r.type||"レシピ")}</span></div>
+  const favBtn=`<button class="favbtn" type="button" data-act="fav" aria-pressed="${fav}" aria-label="${esc(T(fav?"favRemove":"favAdd"))}">${fav?"★":"☆"}</button>`;
+  return `<div class="detailhead"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><div><h2 id="sheetTitle">${esc(r.name)}</h2><div class="muted">${esc(T("makes",{n:r.outputCount||1}))}${esc(T("detailSep"))}${esc(stations)}</div></div>${favBtn}</div>
+<div class="pills">${r.stations.map(s=>`<span class="pill">${esc(stationLabel(s))}</span>`).join("")}<span class="pill">${esc(r.typeLabel||r.type||T("recipe"))}</span></div>
 ${varsHTML}
-<div class="detailgrid"><div><div class="sec">必要な材料・入力</div><ul class="ingredients">${ings||'<li><div class="ing static">材料情報なし（特殊レシピ）</div></li>'}</ul></div>${visual}</div>
-${Array.isArray(r.notes)&&r.notes.length?`<div class="notes"><div class="sec">作り方のポイント</div><ul>${r.notes.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></div>`:""}
-<button class="act" type="button" data-act="uses">🔍 「${esc(r.name)}」を材料に使うレシピを探す</button>
+<div class="detailgrid"><div><div class="sec">${esc(T("ingHead"))}</div><ul class="ingredients">${ings||`<li><div class="ing static">${esc(T("noIng"))}</div></li>`}</ul></div>${visual}</div>
+${Array.isArray(r.notes)&&r.notes.length?`<div class="notes"><div class="sec">${esc(T("notesHead"))}</div><ul>${r.notes.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></div>`:""}
+<button class="act" type="button" data-act="uses">${esc(T("uses",{name:r.name}))}</button>
 ${extLinksHTML(r.name)}
-<button class="act sub2" type="button" data-act="close">閉じる</button>`;
+<button class="act sub2" type="button" data-act="close">${esc(T("close"))}</button>`;
 }
-function stationsOf(r){return r.stations.map(stationLabel).join("・")||"特殊レシピ";}
+function stationsOf(r){return r.stations.map(stationLabel).join(T("stSep"))||T("specialRecipe");}
 function renderSheet(keepScroll){
   const r=stack[stack.length-1],body=$("#sheetBody"),y=body.scrollTop;
   const vy=keepScroll&&body.querySelector(".vchips")?body.querySelector(".vchips").scrollTop:0;
@@ -450,7 +560,7 @@ $("#sheetBody").addEventListener("click",e=>{
   if(act.dataset.act==="fav"){toggleFav(cur);renderSheet(true);}
   if(act.dataset.act==="uses"){
     const name=cur.name;closeSheet();
-    q=name;cat="すべて";st="";$("#search").value=q;$("#station").value="";renderFilters();
+    q=name;cat="all";st="";$("#search").value=q;$("#station").value="";renderFilters();
     setTimeout(()=>{applyFilters();window.scrollTo(0,0);},30);
   }
 });
@@ -488,31 +598,34 @@ $("#search").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault
 $("#clear").addEventListener("click",()=>{q="";$("#search").value="";$("#search").focus();applyFilters();});
 
 /* ---------------------------------------------------------------- 初期化 */
-let categoryList=["すべて"];
+let categoryList=["all"];
 async function init(){
+  applyStatic();
+  $("#station").innerHTML=`<option value="">${esc(T("allStations"))}</option>`;
   try{
-    const res=await fetch("./data/recipes.json",{cache:"no-store"});
-    if(!res.ok)throw new Error("recipes.json が見つかりません");
+    const res=await fetch(DATA_URL,{cache:"no-store"});
+    if(!res.ok)throw new Error(`${DATA_URL} (HTTP ${res.status})`);
     const data=await res.json();
     all=data.recipes||[];prepare();
     const present=new Set(all.map(r=>r.category));
-    categoryList=["すべて",...CAT_ORDER.filter(c=>present.has(c)),...[...present].filter(c=>!CAT_ORDER.includes(c))];
+    categoryList=["all",...CAT_ORDER.filter(c=>present.has(c)),...[...present].filter(c=>!CAT_ORDER.includes(c))];
     const stations=[...new Set(all.flatMap(r=>r.stations))].sort((a,b)=>stationOrder.indexOf(a)-stationOrder.indexOf(b));
-    $("#station").innerHTML='<option value="">全作業場所</option>'+stations.map(s=>`<option value="${esc(s)}">${esc(stationLabel(s))}</option>`).join("");
-    const v=[data.gameVersion?`Bedrock ${data.gameVersion}`:"データ読込済み"];
-    if(data.generatedAt)v.push(`更新 ${data.generatedAt.replace(" UTC","")}`);
+    $("#station").innerHTML=`<option value="">${esc(T("allStations"))}</option>`+stations.map(s=>`<option value="${esc(s)}">${esc(stationLabel(s))}</option>`).join("");
+    const v=[`Bedrock ${data.gameVersion||T("sampleMain")}`];
+    if(data.generatedAt)v.push(T("updated",{d:data.generatedAt.replace(" UTC","")}));
     $("#version").innerHTML=v.map(esc).join("<br>");
     // 前回の検索条件（URLのハッシュ）を復元
     const p=new URLSearchParams(location.hash.slice(1));
-    q=p.get("q")||"";cat=categoryList.includes(p.get("c"))?p.get("c"):"すべて";st=stations.includes(p.get("s"))?p.get("s"):"";
+    q=p.get("q")||"";cat=categoryList.includes(p.get("c"))?p.get("c"):"all";st=stations.includes(p.get("s"))?p.get("s"):"";
     $("#search").value=q;$("#station").value=st;
     renderFilters();render();
   }catch(e){
-    $("#count").textContent="レシピデータ未生成";
-    $("#cards").innerHTML=`<div class="empty">まだレシピデータが作成されていません。GitHubへアップロード後、Actions の「Build recipe database」が完了すると表示されます。<br><br>エラー：${esc(e.message)}</div>`;
+    $("#count").textContent=T("noData");
+    $("#cards").innerHTML=`<div class="empty">${esc(T("noDataMsg"))}<br><br>${esc(T("error"))}${esc(e.message)}</div>`;
     renderFilters();
   }
 }
+$("#langBtn").addEventListener("click",switchLang);
 init();
 
 if("serviceWorker" in navigator){

@@ -28,6 +28,20 @@ iPhoneのSafariで使うことを想定した、Minecraft Bedrock Edition向け�
 - 詳細シートの ☆ でお気に入りに追加できます。お気に入りと最近見たレシピは、検索していないときに一覧の上に表示されます（端末内の `localStorage` に保存）。
 - 詳細シートの「Wikiで詳しく見る」から、日本語版 Minecraft Wiki の該当記事を開けます。クラフトできない材料には「📖 Wiki」リンクが付きます。
 
+## 言語（日本語 / English）
+
+- 端末・ブラウザの言語設定が日本語なら日本語、それ以外は英語で表示します。
+- ヘッダー右上のボタンで手動切り替えもできます（手動で選んだ言語は端末に保存され、以後はそちらを優先）。
+- データは言語ごとに `data/recipes.json`（日本語）と `data/recipes.en.json`（英語）を生成します。お気に入り・履歴はアイテムIDで保存しているので、言語を切り替えても引き継がれます。
+- 画面の文言は `index.html` の `I18N`、材料の役割・レシピ種別の表示名は `scripts/build_data.py` の `ROLES` / `TYPE_LABELS`、召喚・ポータルの説明は `scripts/extras.json` の `ja` / `en` に書きます。
+
+### 英語名の仕組み
+
+1. `scripts/en_overrides.json`（手動の上書き）
+2. `scripts/ja_names.py` の `DIRECT_EN`（`en_US.lang` で引けない旧形式IDなど）
+3. `resource_pack/texts/en_US.lang`
+4. 上記で見つからない場合は ID を単語ごとに大文字化（`data/untranslated_en.txt` に一覧を出力）
+
 ## 日本語名の仕組み
 
 日本語名は次の順で解決します（`scripts/build_data.py`）。

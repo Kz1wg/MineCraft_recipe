@@ -1,7 +1,8 @@
 // v2: HTML・データは「ネットワーク優先」にして、更新が古いキャッシュに邪魔されないようにした。
 // オフライン時（または通信が遅いとき）はキャッシュから表示する。
-const CACHE = "minecraft-recipe-v2";
-const CORE = ["./", "./index.html", "./manifest.webmanifest", "./data/recipes.json"];
+// v3: 英語データ（recipes.en.json）を追加。
+const CACHE = "minecraft-recipe-v3";
+const CORE = ["./", "./index.html", "./manifest.webmanifest", "./data/recipes.json", "./data/recipes.en.json"];
 const NETWORK_TIMEOUT_MS = 4000;
 
 self.addEventListener("install", event => {
