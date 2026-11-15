@@ -406,6 +406,80 @@ def parse_file(path):
     }
 
 
+# ------------------------------------------------------------------ 手書きの追加データ（召喚・ポータルなど）
+EXTRAS_PATH = Path(__file__).resolve().parent / "extras.json"
+LANG = "ja"
+
+
+def tr(value, default=""):
+    """{"ja": ..., "en": ...} から現在の言語の値を取り出す。文字列はそのまま。"""
+    if isinstance(value, dict):
+        return value.get(LANG) or value.get("ja") or default
+    return value if value is not None else default
+
+
+def parse_extra(b):
+    ingredients = []
+    for spec in b.get("ingredients", []):
+        ids = spec.get("items") or [spec.get("item")]
+        d = descriptor([f"minecraft:{i}" for i in ids if i])
+        if spec.get("label"):
+            d["name"] = tr(spec["label"], d["name"])
+        d["count"] = spec.get("count", 1)
+        if spec.get("role"):
+            d["role"] = spec["role"]
+        ingredients.append(d)
+    rec = {
+        "id": b["id"],
+        "name": tr(b["name"]),
+        "output": tr(b["name"]),
+        "outputId": b.get("outputId", ""),
+        "outputCount": 1,
+        "ingredients": ingredients,
+        "grid": [],
+        "stations": ["world"],
+        "type": "build",
+        "typeLabel": "設置・召喚",
+        "category": "設置・召喚",
+        "emoji": b.get("emoji", "🧱"),
+        "special": "",
+        "stationText": "ワールドに設置",
+        "notes": tr(b.get("notes"), []),
+    }
+    lay = b.get("layout")
+    if lay and lay.get("pattern"):
+        rows = lay["pattern"]
+        cols = max(len(r) for r in rows)
+        key = {k: tr(v) for k, v in (lay.get("key") or {}).items()}
+        chars = [ch for r in rows for ch in r.ljust(cols)]
+        opt_keys = set(lay.get("optional") or [])
+        rec["layout"] = {
+            "cols": cols,
+            "rows": len(rows),
+            "cells": [key.get(ch, "") if ch != " " else "" for ch in chars],
+            "optional": [i for i, ch in enumerate(chars) if ch in opt_keys],  # 置かなくてもよいマス
+            "caption": tr(lay.get("caption"), "正面から見た図"),
+        }
+    return rec
+
+
+def load_extras():
+    if not EXTRAS_PATH.exists():
+        return []
+    try:
+        raw = json.loads(EXTRAS_PATH.read_text(encoding="utf-8-sig"))
+    except Exception as e:  # noqa: BLE001
+        print(f"WARNING: {EXTRAS_PATH.name} を読み込めませんでした: {e}")
+        return []
+    out = []
+    for b in raw.get("builds", []):
+        try:
+            out.append(parse_extra(b))
+        except Exception as e:  # noqa: BLE001  1件の失敗で全体を止めない
+            print(f"WARNING: extras {b.get('id')}: {type(e).__name__}: {e}")
+    return out
+
+
 def find_version():
     for p in [SOURCE / "version.json", SOURCE / "version.txt", SOURCE / "manifest.json"]:
         if p.exists():
@@ -433,6 +507,8 @@ def main():
             continue
         if r:
             records.append(r)
+    extras = load_extras()
+    records.extend(extras)
     unique = {r["id"]: r for r in records}
     records = sorted(unique.values(), key=lambda r: (r["name"], r["id"]))
 
@@ -447,7 +523,7 @@ def main():
               "# scripts/ja_overrides.json に  \"ID\": \"日本語名\"  を足すと次回ビルドから日本語になります。\n")
     UNTRANSLATED_OUT.write_text(header + "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
-    print(f"Wrote {len(records)} recipes to {OUT}")
+    print(f"Wrote {len(records)} recipes to {OUT} (extras: {len(extras)})")
     print(f"Japanese name lookups: ja_JP.lang={len(ja)} keys, overrides={len(OVERRIDES)}")
     print(f"Untranslated ids: {len(UNRESOLVED)} (see {UNTRANSLATED_OUT.name})")
     for line in lines[:40]:

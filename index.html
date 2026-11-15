@@ -93,6 +93,7 @@ button.ing:active{background:var(--panel2)}
 .craftgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;aspect-ratio:1;background:#69765f;padding:5px;border-radius:10px}
 .cell{background:#d8d0b7;color:#24251f;border-radius:5px;display:grid;place-items:center;text-align:center;font-size:clamp(9px,2.6vw,12px);font-weight:700;min-width:0;overflow-wrap:anywhere;padding:2px;line-height:1.2}
 .cell.blank{background:#b5b09f}
+.cell.opt{background:transparent;border:1.5px dashed #d8d0b7;color:#e8e2cf;font-weight:400}
 .gridlabel{text-align:center;font-size:10px;color:var(--muted);margin-top:6px}
 .flowbox{padding:14px 12px;background:var(--panel2);border-radius:10px;text-align:center;font-size:12px;line-height:1.6;color:var(--muted)}
 .quick{grid-column:1/-1;margin-bottom:6px}
@@ -104,6 +105,9 @@ button.ing:active{background:var(--panel2)}
 .qitem:active{background:var(--panel2)}
 .favbtn{margin-left:auto;flex:0 0 auto;width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:20px;color:var(--muted)}
 .favbtn[aria-pressed="true"]{color:#ffd45c;border-color:#8a7a3c}
+.notes{margin-top:14px}
+.notes ul{margin:0;padding-left:1.2em;font-size:13px;line-height:1.65;color:var(--text)}
+.notes li{margin-bottom:4px}
 .vsec{margin-top:12px}
 .vchips{display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .vchip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:7px 12px;font-size:12.5px;line-height:1.3;text-align:left}
@@ -168,8 +172,8 @@ button.ing:active{background:var(--panel2)}
 const $=s=>document.querySelector(s);
 const PAGE=100;
 const collator=new Intl.Collator("ja");
-const CAT_ORDER=["建築","道具・装備","食料","レッドストーン・乗り物","素材","醸造","その他"];
-const stationNames={crafting_table:"作業台",stonecutter:"石切台",furnace:"かまど",blast_furnace:"溶鉱炉",smoker:"燻製器",campfire:"焚き火",soul_campfire:"魂の焚き火",smithing_table:"鍛冶台",brewing_stand:"醸造台",cartography_table:"製図台"};
+const CAT_ORDER=["建築","道具・装備","食料","レッドストーン・乗り物","素材","醸造","設置・召喚","その他"];
+const stationNames={world:"ワールドに設置",crafting_table:"作業台",stonecutter:"石切台",furnace:"かまど",blast_furnace:"溶鉱炉",smoker:"燻製器",campfire:"焚き火",soul_campfire:"魂の焚き火",smithing_table:"鍛冶台",brewing_stand:"醸造台",cartography_table:"製図台"};
 const stationOrder=Object.keys(stationNames);
 const stationLabel=s=>stationNames[s]||s||"その他";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -301,7 +305,7 @@ function variantLabels(list){
   return labels.map(t=>{const n=(seen.get(t)||0)+1;seen.set(t,n);return labels.filter(x=>x===t).length>1?`${t}（${n}）`:t;});
 }
 function ingSummary(r){
-  const t=r.ingredients.slice(0,5).map(x=>x.name+(x.count>1?"×"+x.count:"")).join("、");
+  const t=r.ingredients.slice(0,5).map(x=>x.name+(x.count!=null&&x.count!=1?"×"+x.count:"")).join("、");
   return t+(r.ingredients.length>5?" ほか":"");
 }
 function cardHTML({r,list}){
@@ -368,8 +372,13 @@ function sheetHTML(r){
   let visual;
   if(r.grid&&r.grid.some(Boolean)){
     visual=`<div><div class="craftgrid">${Array.from({length:9},(_,i)=>{const v=r.grid[i]||"";return `<div class="cell ${v?"":"blank"}">${esc(v)}</div>`;}).join("")}</div><div class="gridlabel">作業台の配置（上から見た図）</div></div>`;
+  }else if(r.layout&&r.layout.cells){
+    // 召喚・ポータルなど：ワールドに並べる形（列数は可変）
+    const L=r.layout;
+    const c=+L.cols||1,rw=+L.rows||1,opt=new Set(L.optional||[]);
+    visual=`<div><div class="craftgrid" style="grid-template-columns:repeat(${c},1fr);aspect-ratio:${c}/${rw};width:min(100%,${c*50}px);margin:0 auto">${L.cells.map((v,i)=>`<div class="cell ${opt.has(i)?"opt":v?"":"blank"}">${esc(v)}</div>`).join("")}</div><div class="gridlabel">${esc(L.caption||"正面から見た図")}</div></div>`;
   }else{
-    const text={shapeless:"配置自由<br>作業台の空いているマスに材料を置けばOK",process:`${esc(stations)}に材料を入れて加熱`,brewing:"醸造台で、ベースに材料を加えて醸造",smithing:"鍛冶台に、テンプレート・ベース・素材をセット"}[r.type]||esc(r.stationText||"専用の作業場所で加工");
+    const text={build:"ワールドにブロックを並べて作ります。下の「作り方のポイント」を参照",shapeless:"配置自由<br>作業台の空いているマスに材料を置けばOK",process:`${esc(stations)}に材料を入れて加熱`,brewing:"醸造台で、ベースに材料を加えて醸造",smithing:"鍛冶台に、テンプレート・ベース・素材をセット"}[r.type]||esc(r.stationText||"専用の作業場所で加工");
     visual=`<div class="flowbox">${text}</div>`;
   }
   const ings=r.ingredients.map((x,i)=>{
@@ -393,6 +402,7 @@ function sheetHTML(r){
 <div class="pills">${r.stations.map(s=>`<span class="pill">${esc(stationLabel(s))}</span>`).join("")}<span class="pill">${esc(r.typeLabel||r.type||"レシピ")}</span></div>
 ${varsHTML}
 <div class="detailgrid"><div><div class="sec">必要な材料・入力</div><ul class="ingredients">${ings||'<li><div class="ing static">材料情報なし（特殊レシピ）</div></li>'}</ul></div>${visual}</div>
+${Array.isArray(r.notes)&&r.notes.length?`<div class="notes"><div class="sec">作り方のポイント</div><ul>${r.notes.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></div>`:""}
 <button class="act" type="button" data-act="uses">🔍 「${esc(r.name)}」を材料に使うレシピを探す</button>
 ${extLinksHTML(r.name)}
 <button class="act sub2" type="button" data-act="close">閉じる</button>`;

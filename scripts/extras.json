@@ -1,0 +1,144 @@
+{
+  "_comment": "クラフト以外の作り方（ワールドにブロックを並べる召喚・ポータル・構造物）を手書きで追加するデータ。build_data.py が recipes.json に合流させる。",
+  "_format": "ingredients の item/items はアイテムID（名前は自動で日本語化）。label で表示名を上書き可。layout.pattern は正面図（または caption の向き）で、空白は空気。key は図に出す短い名前。name/notes/label/caption は言語ごとに書く（現在は ja を使用）。",
+  "builds": [
+    {
+      "id": "build:iron_golem",
+      "outputId": "iron_golem",
+      "name": {"ja": "アイアンゴーレム", "en": "Iron Golem"},
+      "emoji": "🤖",
+      "ingredients": [
+        {"item": "iron_block", "count": 4, "role": "体"},
+        {"items": ["carved_pumpkin", "lit_pumpkin"], "count": 1, "role": "頭"}
+      ],
+      "layout": {"pattern": [" P ", "III", " I "], "key": {"P": {"ja": "カボチャ"}, "I": {"ja": "鉄ブロック"}}},
+      "notes": {"ja": [
+        "鉄ブロックをT字に4個置き、最後に頭の位置へくり抜かれたカボチャ（またはジャック・オ・ランタン）を置くと召喚されます。",
+        "T字の下の両脇（腕の下）は空気にしておく必要があります。草や雪があると召喚されません。",
+        "プレイヤーが作ったアイアンゴーレムは、プレイヤーを攻撃しません。"
+      ]}
+    },
+    {
+      "id": "build:snow_golem",
+      "outputId": "snow_golem",
+      "name": {"ja": "スノーゴーレム", "en": "Snow Golem"},
+      "emoji": "☃️",
+      "ingredients": [
+        {"item": "snow_block", "count": 2, "role": "体"},
+        {"items": ["carved_pumpkin", "lit_pumpkin"], "count": 1, "role": "頭"}
+      ],
+      "layout": {"pattern": ["P", "S", "S"], "key": {"P": {"ja": "カボチャ"}, "S": {"ja": "雪ブロック"}}},
+      "notes": {"ja": [
+        "雪ブロックを縦に2個積み、最後に一番上へくり抜かれたカボチャ（またはジャック・オ・ランタン）を置くと召喚されます。",
+        "暑いバイオーム（砂漠・ネザーなど）や雨に当たるとダメージを受けます。"
+      ]}
+    },
+    {
+      "id": "build:copper_golem",
+      "outputId": "copper_golem",
+      "name": {"ja": "コッパーゴーレム", "en": "Copper Golem"},
+      "emoji": "🤖",
+      "ingredients": [
+        {"item": "copper_block", "count": 1, "role": "体"},
+        {"item": "carved_pumpkin", "count": 1, "role": "頭"}
+      ],
+      "layout": {"pattern": ["P", "C"], "key": {"P": {"ja": "カボチャ"}, "C": {"ja": "銅ブロック"}}},
+      "notes": {"ja": [
+        "銅ブロックの上に、くり抜かれたカボチャを置くと召喚されます。"
+      ]}
+    },
+    {
+      "id": "build:wither",
+      "outputId": "wither",
+      "name": {"ja": "ウィザー", "en": "Wither"},
+      "emoji": "💀",
+      "ingredients": [
+        {"items": ["soul_sand", "soul_soil"], "count": 4, "role": "体"},
+        {"item": "wither_skeleton_skull", "count": 3, "role": "頭"}
+      ],
+      "layout": {"pattern": ["KKK", "SSS", " S "], "key": {"K": {"ja": "頭蓋骨"}, "S": {"ja": "ソウルサンド"}}},
+      "notes": {"ja": [
+        "ソウルサンド（またはソウルソイル）をT字に4個置き、上にウィザースケルトンの頭蓋骨を3個並べます。最後に置くブロックは頭蓋骨にしてください。",
+        "T字の下の両脇は空気にしておく必要があります。",
+        "非常に強いボスです。周囲を破壊するので、拠点から離れた場所で召喚しましょう。ピースフルでは召喚できません。",
+        "倒すとネザースター（ビーコンの材料）を落とします。"
+      ]}
+    },
+    {
+      "id": "build:nether_portal",
+      "outputId": "nether_portal",
+      "name": {"ja": "ネザーポータル", "en": "Nether Portal"},
+      "emoji": "🌀",
+      "ingredients": [
+        {"item": "obsidian", "count": "10〜14", "role": "枠"},
+        {"items": ["flint_and_steel", "fire_charge"], "count": 1, "role": "着火"}
+      ],
+      "layout": {
+        "pattern": ["cOOc", "O  O", "O  O", "O  O", "cOOc"],
+        "key": {"O": {"ja": "黒曜石"}, "c": {"ja": "角（不要）"}},
+        "optional": ["c"],
+        "caption": {"ja": "正面から見た図（最小サイズ）"}
+      },
+      "notes": {"ja": [
+        "黒曜石で、内側が幅2×高さ3以上になる枠を作ります。最小は外寸4×5で、四隅を省くと10個で作れます。",
+        "枠の内側を火打石と打ち金（またはファイヤーチャージ）で着火すると起動します。",
+        "内側は最大21×21まで大きくできます。"
+      ]}
+    },
+    {
+      "id": "build:end_portal",
+      "outputId": "end_portal",
+      "name": {"ja": "エンドポータル（起動）", "en": "End Portal (activation)"},
+      "emoji": "🌌",
+      "ingredients": [
+        {"item": "ender_eye", "count": "最大12", "role": "はめ込み"}
+      ],
+      "layout": {
+        "pattern": [" FFF ", "F   F", "F   F", "F   F", " FFF "],
+        "key": {"F": {"ja": "枠"}},
+        "caption": {"ja": "上から見た図（枠は要塞に設置済み）"}
+      },
+      "notes": {"ja": [
+        "エンドポータルの枠はサバイバルでは入手できず、要塞（ストロングホールド）にあらかじめ置かれています。",
+        "12個の枠すべてにエンダーアイをはめ込むと起動します。最初から目が入っている枠もあります。",
+        "要塞の場所は、エンダーアイを投げて飛んでいく方向で探せます。"
+      ]}
+    },
+    {
+      "id": "build:beacon_pyramid",
+      "outputId": "beacon_pyramid",
+      "name": {"ja": "ビーコンのピラミッド（起動）", "en": "Beacon Pyramid (activation)"},
+      "emoji": "🔦",
+      "ingredients": [
+        {"item": "beacon", "count": 1, "role": "本体"},
+        {"items": ["iron_block", "gold_block", "emerald_block", "diamond_block", "netherite_block"], "count": "9〜164", "role": "土台",
+         "label": {"ja": "鉱物ブロック（鉄・金・エメラルド・ダイヤ・ネザライト）"}},
+        {"items": ["iron_ingot", "gold_ingot", "emerald", "diamond", "netherite_ingot"], "count": 1, "role": "支払い",
+         "label": {"ja": "鉄インゴット・金インゴット・エメラルド・ダイヤモンド・ネザライトインゴットのどれか"}}
+      ],
+      "notes": {"ja": [
+        "鉱物ブロックでピラミッドを作り、頂上の中央にビーコンを置きます。鉱物ブロックは種類を混ぜても構いません。",
+        "1段：3×3＝9個、2段：合計34個、3段：合計83個、4段：合計164個。段数が多いほど効果の範囲が広がり、選べる効果も増えます。",
+        "ビーコンの真上が空まで見えている必要があります（ガラスは通せます）。",
+        "ビーコンの画面で支払いアイテムを1個入れ、効果を選ぶと起動します。"
+      ]}
+    },
+    {
+      "id": "build:conduit_frame",
+      "outputId": "conduit_frame",
+      "name": {"ja": "コンジットの枠（起動）", "en": "Conduit Frame (activation)"},
+      "emoji": "🌊",
+      "ingredients": [
+        {"item": "conduit", "count": 1, "role": "本体"},
+        {"items": ["prismarine", "prismarine_bricks", "dark_prismarine", "sea_lantern"], "count": "16〜42", "role": "枠",
+         "label": {"ja": "プリズマリン系ブロック（プリズマリン・プリズマリンレンガ・ダークプリズマリン・シーランタン）"}}
+      ],
+      "notes": {"ja": [
+        "水中にコンジットを置き、その周りを3×3×3の水で満たします。",
+        "コンジットを中心に、5×5のリング（中が空洞の正方形の枠）を縦・横・水平の3方向に組み合わせるように、プリズマリン系ブロックを置きます。",
+        "16個で起動し、7個増えるごとに範囲が広がります。42個で最大範囲になります。",
+        "範囲内のプレイヤーは水中呼吸・暗視・採掘速度上昇の効果を得られ、42個のときは近くの敵対モブにダメージを与えます。"
+      ]}
+    }
+  ]
+}
