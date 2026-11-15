@@ -101,6 +101,10 @@ button.ing:active{background:var(--panel2)}
 .act{display:block;width:100%;margin-top:16px;padding:13px;border:1px solid var(--accent);border-radius:12px;background:transparent;color:var(--accent);font-size:14px;font-weight:700}
 .act:active{background:rgba(164,213,141,.14)}
 .act.sub2{border-color:var(--line);color:var(--text);font-weight:400;margin-top:8px;background:var(--panel2)}
+.extlinks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.ext{display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;padding:8px 6px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);font-size:12px;line-height:1.35;text-decoration:none}
+.ext:active{background:#30463a}
+.ilink{margin-left:auto;color:var(--accent);font-size:11.5px;white-space:nowrap;text-decoration:none;padding:4px 0 4px 8px}
 @keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @media(min-width:620px){.cards{grid-template-columns:1fr 1fr}.sheet{bottom:4vh;border-bottom:1px solid var(--line);border-radius:20px}}
@@ -164,6 +168,29 @@ function norm(s){
   return String(s??"").normalize("NFKC").toLowerCase()
     .replace(/[\u3041-\u3096]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60))
     .replace(/[・･]/g,"");
+}
+// 外部リンク設定。将来English対応する際は LANG を切り替え、en 側の文言とURLを使う
+// （英語Wikiは英名が必要なので、データ側に英名フィールドを足してから name に渡す想定）
+const LANG="ja";
+const EXT={
+  ja:{
+    prefix:"マイクラ 統合版 ",
+    google:[["入手方法","Google：入手方法"],["使い道","Google：使い道"]],
+    wiki:{url:"https://ja.minecraft.wiki/w/Special:Search?search=",label:"Wikiで見る"},
+    ingLabel:"🔍 入手方法"
+  },
+  en:{
+    prefix:"Minecraft Bedrock ",
+    google:[["how to get","Google: How to get"],["uses","Google: Uses"]],
+    wiki:{url:"https://minecraft.wiki/w/Special:Search?search=",label:"Wiki"},
+    ingLabel:"🔍 How to get"
+  }
+}[LANG];
+const googleURL=(name,kw)=>"https://www.google.com/search?q="+encodeURIComponent(`${EXT.prefix}${name} ${kw}`.trim());
+const wikiURL=name=>EXT.wiki.url+encodeURIComponent(name);
+const extA=(href,label,cls="ext")=>`<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
+function extLinksHTML(name){
+  return `<div class="extlinks">${EXT.google.map(([kw,label])=>extA(googleURL(name,kw),label)).join("")}${extA(wikiURL(name),EXT.wiki.label)}</div>`;
 }
 const idWords=s=>String(s||"").replace(/^#?(minecraft:)?/,"").replace(/[_:]/g," ");
 
@@ -283,7 +310,10 @@ function sheetHTML(r){
   const ings=r.ingredients.map((x,i)=>{
     const role=x.role?`<span class="role">${esc(x.role)}</span>`:"";
     const body=`${role}<span class="iname">${esc(x.name)}</span><span class="iqty">× ${esc(x.count||1)}</span>`;
-    return recipesFor(x,r).length?`<li><button class="ing" type="button" data-ing="${i}">${body}<span class="go">レシピ ›</span></button></li>`:`<li><div class="ing static">${body}</div></li>`;
+    if(recipesFor(x,r).length)return `<li><button class="ing" type="button" data-ing="${i}">${body}<span class="go">レシピ ›</span></button></li>`;
+    // クラフトできない材料（タグ材料を除く）には入手方法の検索リンクを付ける
+    const get=x.name&&!String(x.id||"").startsWith("#")?extA(googleURL(x.name,EXT.google[0][0]),EXT.ingLabel,"ilink"):"";
+    return `<li><div class="ing static">${body}${get}</div></li>`;
   }).join("");
   const alts=siblings(r).slice(0,12).map(x=>`<button class="alt" type="button" data-alt="${esc(x.id)}">${esc(stationsOf(x))}<small>${esc(ingSummary(x))}</small></button>`).join("");
   const altCount=siblings(r).length;
@@ -292,6 +322,7 @@ function sheetHTML(r){
 <div class="detailgrid"><div><div class="sec">必要な材料・入力</div><ul class="ingredients">${ings||'<li><div class="ing static">材料情報なし（特殊レシピ）</div></li>'}</ul></div>${visual}</div>
 ${alts?`<div style="margin-top:16px"><div class="sec">同じものを作る別のレシピ（${altCount}）</div><div class="alts">${alts}</div></div>`:""}
 <button class="act" type="button" data-act="uses">🔍 「${esc(r.name)}」を材料に使うレシピを探す</button>
+${extLinksHTML(r.name)}
 <button class="act sub2" type="button" data-act="close">閉じる</button>`;
 }
 function stationsOf(r){return r.stations.map(stationLabel).join("・")||"特殊レシピ";}
