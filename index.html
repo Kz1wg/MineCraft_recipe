@@ -95,9 +95,11 @@ button.ing:active{background:var(--panel2)}
 .cell.blank{background:#b5b09f}
 .gridlabel{text-align:center;font-size:10px;color:var(--muted);margin-top:6px}
 .flowbox{padding:14px 12px;background:var(--panel2);border-radius:10px;text-align:center;font-size:12px;line-height:1.6;color:var(--muted)}
-.alts{display:grid;gap:6px;margin-top:6px}
-.alt{display:block;width:100%;text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:13px;line-height:1.45}
-.alt small{display:block;color:var(--muted);font-size:11px}
+.vsec{margin-top:12px}
+.vchips{display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.vchip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:7px 12px;font-size:12.5px;line-height:1.3;text-align:left}
+.vchip.active{background:var(--accent);border-color:var(--accent);color:#142116;font-weight:700}
+.vcnt{display:inline-block;font-weight:700;font-size:10.5px;color:#142116;background:var(--accent);border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:2px}
 .act{display:block;width:100%;margin-top:16px;padding:13px;border:1px solid var(--accent);border-radius:12px;background:transparent;color:var(--accent);font-size:14px;font-weight:700}
 .act:active{background:rgba(164,213,141,.14)}
 .act.sub2{border-color:var(--line);color:var(--text);font-weight:400;margin-top:8px;background:var(--panel2)}
@@ -194,7 +196,7 @@ function extLinksHTML(name){
 }
 const idWords=s=>String(s||"").replace(/^#?(minecraft:)?/,"").replace(/[_:]/g," ");
 
-let all=[], byId=new Map(), byName=new Map(), byOutId=new Map();
+let all=[], itemCount=0, byId=new Map(), byName=new Map(), byOutId=new Map();
 let q="", cat="すべて", st="", limit=PAGE;
 let timer=null;
 
@@ -213,6 +215,7 @@ function prepare(){
   }
   const rank=r=>{const i=stationOrder.indexOf(r.stations[0]);return i<0?99:i;};
   for(const m of [byName,byOutId])for(const list of m.values())list.sort((a,b)=>rank(a)-rank(b));
+  itemCount=new Set(all.map(keyOf)).size;
 }
 function nameScore(r,tokens){
   let s=0;
@@ -224,7 +227,7 @@ function nameScore(r,tokens){
 function computeView(){
   const pool=all.filter(r=>(cat==="すべて"||r.category===cat)&&(!st||r.stations.includes(st)));
   const tokens=norm(q).split(/\s+/).filter(Boolean);
-  if(!tokens.length)return {groups:[{title:"",rows:pool}],total:pool.length,searching:false};
+  if(!tokens.length){const rows=collapse(pool);return {groups:[{title:"",rows}],total:rows.length,searching:false};}
   const main=[],uses=[];
   for(const r of pool){
     if(tokens.every(t=>r._o.includes(t)))main.push([nameScore(r,tokens),r]);
@@ -232,24 +235,51 @@ function computeView(){
   }
   main.sort((a,b)=>a[0]-b[0]);
   const q0=q.trim(),groups=[];
-  if(main.length)groups.push({title:uses.length?`「${q0}」を作るレシピ（${main.length}）`:"",rows:main.map(x=>x[1])});
-  if(uses.length)groups.push({title:`「${q0}」を材料などに使うレシピ（${uses.length}）`,rows:uses});
-  return {groups,total:main.length+uses.length,searching:true};
+  const mi=collapse(main.map(x=>x[1])),ui=collapse(uses);
+  if(mi.length)groups.push({title:ui.length?`「${q0}」を作るレシピ（${mi.length}）`:"",rows:mi});
+  if(ui.length)groups.push({title:`「${q0}」を材料などに使うレシピ（${ui.length}）`,rows:ui});
+  return {groups,total:mi.length+ui.length,searching:true};
+}
+// 同じ完成品のレシピを1件にまとめる（材料違い・作業場所違いの別レシピ）
+const keyOf=r=>r.outputId||"n:"+r.name;
+function collapse(rows){
+  const m=new Map();
+  for(const r of rows){const k=keyOf(r),e=m.get(k);if(e)e.list.push(r);else m.set(k,{r,list:[r]});}
+  return [...m.values()];
+}
+function variantsOf(r){return (r.outputId&&byOutId.get(r.outputId))||byName.get(r.name)||[r];}
+// 各レシピの「他と違う部分」を短いラベルにする（全レシピ共通の材料は省く）
+function variantLabels(list){
+  const names=list.map(r=>[...new Set(r.ingredients.map(x=>x.name))]);
+  const common=names[0].filter(n=>names.every(a=>a.includes(n)));
+  const multiSt=new Set(list.map(stationsOf)).size>1;
+  const labels=list.map((r,i)=>{
+    const d=names[i].filter(n=>!common.includes(n));
+    let t=d.slice(0,2).join("・")+(d.length>2?" ほか":"");
+    if(multiSt)t=stationsOf(r)+(t?"："+t:"");
+    return t||stationsOf(r);
+  });
+  const seen=new Map();
+  return labels.map(t=>{const n=(seen.get(t)||0)+1;seen.set(t,n);return labels.filter(x=>x===t).length>1?`${t}（${n}）`:t;});
 }
 function ingSummary(r){
   const t=r.ingredients.slice(0,5).map(x=>x.name+(x.count>1?"×"+x.count:"")).join("、");
   return t+(r.ingredients.length>5?" ほか":"");
 }
-function cardHTML(r){
-  const st=r.stations.map(stationLabel).join("・")||"特殊";
-  const cnt=(r.outputCount||1)>1?`<span class="cnt">×${esc(r.outputCount)}</span>`:"";
-  return `<button class="recipe" type="button" data-id="${esc(r.id)}"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><span class="rbody"><span class="rname">${esc(r.name)}${cnt}</span><span class="details">${esc(st)} ／ ${esc(ingSummary(r))}</span></span><span class="arrow" aria-hidden="true">›</span></button>`;
+function cardHTML({r,list}){
+  const n=list.length;
+  const st=[...new Set(list.flatMap(x=>x.stations))].map(stationLabel).join("・")||"特殊";
+  const cnt=(r.outputCount||1)>1&&n===1?`<span class="cnt">×${esc(r.outputCount)}</span>`:"";
+  const badge=n>1?`<span class="vcnt">${n}通り</span>`:"";
+  let detail=ingSummary(r);
+  if(n>1){const l=variantLabels(list);detail=l.slice(0,3).join("、")+(n>3?" ほか":"");}
+  return `<button class="recipe" type="button" data-id="${esc(r.id)}"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><span class="rbody"><span class="rname">${esc(r.name)}${cnt}${badge}</span><span class="details">${esc(st)} ／ ${esc(detail)}</span></span><span class="arrow" aria-hidden="true">›</span></button>`;
 }
 function render(opts={}){
   if(opts.resetLimit!==false)limit=PAGE;
   const v=computeView();
   const filtered=!!(q.trim()||cat!=="すべて"||st);
-  $("#count").textContent=v.searching?`${v.total.toLocaleString()} 件ヒット`:`${v.total.toLocaleString()} / ${all.length.toLocaleString()} レシピ`;
+  $("#count").textContent=v.searching?`${v.total.toLocaleString()} 件ヒット`:`${v.total.toLocaleString()} / ${itemCount.toLocaleString()} アイテム`;
   $("#resetwrap").innerHTML=filtered?'<button class="link" type="button" data-act="reset">条件をすべて解除</button>':"";
   $("#clear").hidden=!q;
   if(!v.total){
@@ -289,10 +319,6 @@ function resetAll(){q="";cat="すべて";st="";$("#search").value="";$("#station
 let sheetOpen=false,pushed=false,stack=[],lastFocus=null;
 const root=$("#sheetRoot");
 
-function siblings(r){
-  const list=(r.outputId&&byOutId.get(r.outputId))||byName.get(r.name)||[];
-  return list.filter(x=>x!==r);
-}
 function recipesFor(ing,self){
   if(!ing||!ing.name||String(ing.id||"").startsWith("#"))return [];
   const list=(ing.id&&byOutId.get(ing.id))||byName.get(ing.name)||[];
@@ -315,21 +341,28 @@ function sheetHTML(r){
     const get=x.name&&!String(x.id||"").startsWith("#")?extA(googleURL(x.name,EXT.google[0][0]),EXT.ingLabel,"ilink"):"";
     return `<li><div class="ing static">${body}${get}</div></li>`;
   }).join("");
-  const alts=siblings(r).slice(0,12).map(x=>`<button class="alt" type="button" data-alt="${esc(x.id)}">${esc(stationsOf(x))}<small>${esc(ingSummary(x))}</small></button>`).join("");
-  const altCount=siblings(r).length;
+  // 同じ完成品の別レシピは、チップで切り替える
+  const vars=variantsOf(r);
+  let varsHTML="";
+  if(vars.length>1){
+    const labels=variantLabels(vars);
+    varsHTML=`<div class="vsec"><div class="sec">作り方 ${vars.length}通り（タップで切り替え）</div><div class="vchips">${vars.map((x,i)=>`<button class="vchip${x===r?" active":""}" type="button" data-var="${esc(x.id)}" aria-pressed="${x===r}">${esc(labels[i])}</button>`).join("")}</div></div>`;
+  }
   return `<div class="detailhead"><span class="icon" aria-hidden="true">${esc(r.emoji||"🧱")}</span><div><h2 id="sheetTitle">${esc(r.name)}</h2><div class="muted">完成数：${esc(r.outputCount||1)}　／　${esc(stations)}</div></div></div>
 <div class="pills">${r.stations.map(s=>`<span class="pill">${esc(stationLabel(s))}</span>`).join("")}<span class="pill">${esc(r.typeLabel||r.type||"レシピ")}</span></div>
+${varsHTML}
 <div class="detailgrid"><div><div class="sec">必要な材料・入力</div><ul class="ingredients">${ings||'<li><div class="ing static">材料情報なし（特殊レシピ）</div></li>'}</ul></div>${visual}</div>
-${alts?`<div style="margin-top:16px"><div class="sec">同じものを作る別のレシピ（${altCount}）</div><div class="alts">${alts}</div></div>`:""}
 <button class="act" type="button" data-act="uses">🔍 「${esc(r.name)}」を材料に使うレシピを探す</button>
 ${extLinksHTML(r.name)}
 <button class="act sub2" type="button" data-act="close">閉じる</button>`;
 }
 function stationsOf(r){return r.stations.map(stationLabel).join("・")||"特殊レシピ";}
-function renderSheet(){
-  const r=stack[stack.length-1];
-  $("#sheetBody").innerHTML=sheetHTML(r);
-  $("#sheetBody").scrollTop=0;
+function renderSheet(keepScroll){
+  const r=stack[stack.length-1],body=$("#sheetBody"),y=body.scrollTop;
+  const vy=keepScroll&&body.querySelector(".vchips")?body.querySelector(".vchips").scrollTop:0;
+  body.innerHTML=sheetHTML(r);
+  body.scrollTop=keepScroll?y:0;
+  if(vy&&body.querySelector(".vchips"))body.querySelector(".vchips").scrollTop=vy;
   $("#sheetBack").hidden=stack.length<2;
 }
 function openSheet(r,trigger){
@@ -363,8 +396,9 @@ $("#sheetBody").addEventListener("click",e=>{
   const cur=stack[stack.length-1];
   const ing=e.target.closest("[data-ing]");
   if(ing){const x=cur.ingredients[+ing.dataset.ing];const list=recipesFor(x,cur);if(list.length)openSheet(list[0]);return;}
-  const alt=e.target.closest("[data-alt]");
-  if(alt){openSheet(byId.get(alt.dataset.alt));return;}
+  // 別レシピへの切り替えは履歴に積まず、その場で差し替える
+  const vb=e.target.closest("[data-var]");
+  if(vb){const x=byId.get(vb.dataset.var);if(x&&x!==cur){stack[stack.length-1]=x;renderSheet(true);}return;}
   const act=e.target.closest("[data-act]");
   if(!act)return;
   if(act.dataset.act==="close")closeSheet();
