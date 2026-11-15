@@ -116,7 +116,7 @@ button.ing:active{background:var(--panel2)}
 .act{display:block;width:100%;margin-top:16px;padding:13px;border:1px solid var(--accent);border-radius:12px;background:transparent;color:var(--accent);font-size:14px;font-weight:700}
 .act:active{background:rgba(164,213,141,.14)}
 .act.sub2{border-color:var(--line);color:var(--text);font-weight:400;margin-top:8px;background:var(--panel2)}
-.extlinks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.extlinks{display:grid;gap:6px;margin-top:8px}
 .ext{display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;padding:8px 6px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);font-size:12px;line-height:1.35;text-decoration:none}
 .ext:active{background:#30463a}
 .ilink{margin-left:auto;color:var(--accent);font-size:11.5px;white-space:nowrap;text-decoration:none;padding:4px 0 4px 8px}
@@ -188,24 +188,15 @@ function norm(s){
 // （英語Wikiは英名が必要なので、データ側に英名フィールドを足してから name に渡す想定）
 const LANG="ja";
 const EXT={
-  ja:{
-    prefix:"マイクラ 統合版 ",
-    google:[["入手方法","Google：入手方法"],["使い道","Google：使い道"]],
-    wiki:{url:"https://ja.minecraft.wiki/w/Special:Search?search=",label:"Wikiで見る"},
-    ingLabel:"🔍 入手方法"
-  },
-  en:{
-    prefix:"Minecraft Bedrock ",
-    google:[["how to get","Google: How to get"],["uses","Google: Uses"]],
-    wiki:{url:"https://minecraft.wiki/w/Special:Search?search=",label:"Wiki"},
-    ingLabel:"🔍 How to get"
-  }
+  ja:{wiki:"https://ja.minecraft.wiki/w/Special:Search?search=",label:"📖 「{name}」をWikiで詳しく見る",ingLabel:"📖 Wiki"},
+  en:{wiki:"https://minecraft.wiki/w/Special:Search?search=",label:"📖 Read about \"{name}\" on the Wiki",ingLabel:"📖 Wiki"}
 }[LANG];
-const googleURL=(name,kw)=>"https://www.google.com/search?q="+encodeURIComponent(`${EXT.prefix}${name} ${kw}`.trim());
-const wikiURL=name=>EXT.wiki.url+encodeURIComponent(name);
+// 「板材（各種）」「エンドポータル（起動）」の末尾の補足は外して検索する（記事名に一致しやすくする）
+const wikiTerm=name=>String(name).replace(/\s*[（(][^（）()]*[）)]\s*$/,"").trim()||String(name);
+const wikiURL=name=>EXT.wiki+encodeURIComponent(wikiTerm(name));
 const extA=(href,label,cls="ext")=>`<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
 function extLinksHTML(name){
-  return `<div class="extlinks">${EXT.google.map(([kw,label])=>extA(googleURL(name,kw),label)).join("")}${extA(wikiURL(name),EXT.wiki.label)}</div>`;
+  return `<div class="extlinks">${extA(wikiURL(name),EXT.label.replace("{name}",name))}</div>`;
 }
 const idWords=s=>String(s||"").replace(/^#?(minecraft:)?/,"").replace(/[_:]/g," ");
 
@@ -385,8 +376,8 @@ function sheetHTML(r){
     const role=x.role?`<span class="role">${esc(x.role)}</span>`:"";
     const body=`${role}<span class="iname">${esc(x.name)}</span><span class="iqty">× ${esc(x.count||1)}</span>`;
     if(recipesFor(x,r).length)return `<li><button class="ing" type="button" data-ing="${i}">${body}<span class="go">レシピ ›</span></button></li>`;
-    // クラフトできない材料（タグ材料を除く）には入手方法の検索リンクを付ける
-    const get=x.name&&!String(x.id||"").startsWith("#")?extA(googleURL(x.name,EXT.google[0][0]),EXT.ingLabel,"ilink"):"";
+    // クラフトできない材料（タグ・複数候補の材料を除く）には Wiki へのリンクを付ける
+    const get=x.name&&!String(x.id||"").startsWith("#")&&!x.name.includes("／")?extA(wikiURL(x.name),EXT.ingLabel,"ilink"):"";
     return `<li><div class="ing static">${body}${get}</div></li>`;
   }).join("");
   // 同じ完成品の別レシピは、チップで切り替える
